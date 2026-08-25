@@ -73,8 +73,23 @@ def eval_supplies_orders() -> bool:
     return ok_small and ok_bulk and ok_alerts
 
 
+def eval_poc_notification_cooldown() -> bool:
+    from agent.policy.risk import PolicyEngine
+    policy = PolicyEngine.defaults()
+    first = policy.evaluate({"kind": "notify_poc", "device": "DEV-0007"})
+    again = policy.evaluate({"kind": "notify_poc", "device": "DEV-0007"})
+    other = policy.evaluate({"kind": "notify_poc", "device": "DEV-0008"})
+    ok_first = check("first low-paper notice sends to POC", first.risk.value == "auto")
+    ok_dup = check("repeat notice within 24h suppressed (no alert fatigue)",
+                   again.risk.value == "blocked")
+    ok_other = check("different device unaffected by cooldown",
+                     other.risk.value == "auto")
+    return ok_first and ok_dup and ok_other
+
+
 SCENARIOS = [eval_queue_hang, eval_action_cap, eval_denylist,
-             eval_human_gate, eval_firmware_drift, eval_supplies_orders]
+             eval_human_gate, eval_firmware_drift, eval_supplies_orders,
+             eval_poc_notification_cooldown]
 
 
 def main() -> int:

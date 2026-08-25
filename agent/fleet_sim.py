@@ -76,10 +76,13 @@ class FleetSimulator:
                         "toner_pct": d.toner_pct,
                     })
                 if d.paper_pct <= 10:
+                    # Paper is site-loaded, never ordered — route to the
+                    # device's point of contact instead (with cooldown).
                     self.alerts.append({
                         "device": d.device_id, "server": d.server,
                         "queue": d.queue, "symptom": "paper_low",
                         "severity": "low", "paper_pct": d.paper_pct,
+                        "disposition": "notify_poc",
                     })
         else:
             raise ValueError(f"unknown scenario {name}")
