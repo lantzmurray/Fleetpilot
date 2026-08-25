@@ -47,6 +47,20 @@
   .sev-medium { color:var(--blue); border-color:var(--blue); }
   .sev-low { color:var(--dim); }
   .empty { color:var(--dim); font-style:italic; }
+  .rollout { border:1px solid var(--line); border-radius:8px; padding:12px;
+             margin-bottom:16px; font-size:13px; }
+  .rollout h3 { font-size:13px; margin-bottom:8px; }
+  .rollout.aborted h3 { color:var(--red); }
+  .rollout.clean h3 { color:var(--green); }
+  .rollout table { border-collapse:collapse; }
+  .rollout td { padding:2px 14px 2px 0; }
+  .rollout td:first-child { color:var(--dim); }
+  .health { display:flex; gap:14px; align-items:center; margin-top:10px;
+            font-size:12px; color:var(--dim); flex-wrap:wrap; }
+  .health b { color:var(--fg); font-weight:600; }
+  .health .fallback { color:var(--amber); }
+  .health .live { color:var(--green); }
+  button:disabled { opacity:.45; cursor:wait; }
 </style>
 </head>
 <body>
@@ -56,6 +70,7 @@
   <div class="stat"><b id="s-devices">–</b><span>devices</span></div>
   <div class="stat"><b id="s-servers">–</b><span>print servers</span></div>
   <div class="stat"><b id="s-alerts">–</b><span>open alerts</span></div>
+  <div class="health" id="health"></div>
 </div>
 
 <div class="controls">
@@ -80,12 +95,13 @@
     </div>
   </div>
   <div>
+    <div id="rollout"></div>
     <div class="panel" style="margin-bottom:16px">
       <h2>Approval inbox</h2>
       <div id="approvals" class="empty">nothing awaiting approval</div>
     </div>
     <div class="panel">
-      <h2>Audit journal (last 50)</h2>
+      <h2>Audit journal — run <span id="run-id">–</span></h2>
       <div id="journal" class="log empty">–</div>
     </div>
   </div>
@@ -94,10 +110,21 @@
 <script>
 const $ = id => document.getElementById(id);
 
+let busy = false;
+
 function render(s) {
   $('s-devices').textContent = s.fleet.devices;
   $('s-servers').textContent = s.fleet.servers.length;
   $('s-alerts').textContent = s.fleet.alerts_open;
+  $('run-id').textContent = s.run_id || '–';
+
+  const h = s.health || {};
+  const src = h.diagnosis_source;
+  $('health').innerHTML =
+    `<span>model: <b>${esc(h.model)}</b></span>` +
+    (src ? `<span>diagnosis: <b class="${src==='gemini'?'live':'fallback'}">${
+      src==='gemini' ? 'Gemini (live)' : 'deterministic fallback'}</b></span>` : '') +
+    `<span>fleet: synthetic sandbox</span>`;
 
   const sum = s.last_summary || {};
   $('rca').innerHTML = sum.root_cause
@@ -116,16 +143,37 @@ function render(s) {
     ? s.pending_approvals.map(p =>
         `<div class="approval"><h3>APPROVAL REQUIRED</h3>
          <b>${esc(p.action.kind)}</b> — ${esc(p.action.rationale||'')}<br>
-         ${p.action.cost_usd ? `cost: $${p.action.cost_usd}` : ''}
+         blast radius: ${(p.action.devices||[]).length} devices
+         ${p.action.cost_usd ? ` · cost: $${p.action.cost_usd}` : ''}<br>
+         <span style="color:var(--dim)">gated because: ${esc(p.reason||'')}</span>
          <div style="margin-top:8px">
            <button class="approve" onclick="decide('${p.id}','approve')">Approve</button>
            <button class="reject" onclick="decide('${p.id}','reject')">Reject</button>
          </div></div>`).join('')
     : '<span class="empty">nothing awaiting approval</span>';
 
+  const r = s.rollout_report;
+  $('rollout').innerHTML = r ? rolloutCard(r) : '';
+
   $('journal').innerHTML = s.journal.map(e =>
     `<div><span class="kind journal-${cls(e)}">[${e.kind}]</span>
      ${summ(e)}</div>`).join('');
+}
+
+function rolloutCard(r) {
+  const aborted = r.outcome === 'aborted';
+  return `<div class="panel rollout ${aborted ? 'aborted' : 'clean'}">
+    <h3>${aborted
+      ? 'ROLLOUT ABORTED — frozen push detected, fleet protected'
+      : 'PILOT VERIFIED CLEAN — expansion awaiting approval'}</h3>
+    <table>
+      <tr><td>pilot batch</td><td>${r.pilot_size} devices</td></tr>
+      <tr><td>completed</td><td>${r.pilot_completed}</td></tr>
+      <tr><td>hung / quarantined</td><td>${(r.hung||[]).length} / ${
+        (r.quarantined||[]).length} ${r.hung && r.hung.length ? '('+r.hung.join(', ')+')' : ''}</td></tr>
+      <tr><td>fleet untouched</td><td>${r.fleet_untouched} devices</td></tr>
+      <tr><td>watchdog checks</td><td>${r.watchdog_checks}</td></tr>
+    </table></div>`;
 }
 
 function cls(e){ return e.kind==='gate' ? 'gate-' +
@@ -137,21 +185,42 @@ function summ(e){ const p=e.payload;
   if (e.kind==='observe') return `${p.alert_count} alerts observed`;
   if (e.kind==='cycle_complete') return `${p.executed.length} executed,
     ${p.escalated.length} escalated, ${p.blocked.length} blocked`;
+  if (e.kind==='rollout_pilot') return `pilot pushed to ${
+    (p.result&&p.result.completed?p.result.completed.length:0)} devices`;
+  if (e.kind==='watchdog') return `check ${p.check}: ${p.still_hung.length} still hung`;
+  if (e.kind==='rollout_aborted') return `quarantined ${
+    (p.quarantined||[]).join(', ')} — fleet untouched`;
+  if (e.kind==='rollout_pilot_verified') return 'pilot clean, expansion proposed';
+  if (e.kind==='rollout_report') return p.outcome;
+  if (e.kind==='run_started') return `run ${p.run}`;
   return ''; }
 function esc(s){ return String(s??'').replace(/[<>&]/g,
   c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
 
+async function guard(fn){
+  if (busy) return; busy = true;
+  document.querySelectorAll('button').forEach(b => b.disabled = true);
+  try { await fn(); }
+  finally { busy = false;
+    document.querySelectorAll('button').forEach(b => b.disabled = false); }
+}
 async function run(name){
-  const r = await fetch('/api/scenario/'+name, {method:'POST'});
-  render(await r.json());
+  await guard(async () => {
+    const r = await fetch('/api/scenario/'+name, {method:'POST'});
+    render(await r.json());
+  });
 }
 async function decide(id, act){
-  const r = await fetch(`/api/${act}/${id}`, {method:'POST'});
-  render(await r.json());
+  await guard(async () => {
+    const r = await fetch(`/api/${act}/${id}`, {method:'POST'});
+    render(await r.json());
+  });
 }
 async function reset(){
-  const r = await fetch('/api/reset', {method:'POST'});
-  render(await r.json());
+  await guard(async () => {
+    const r = await fetch('/api/reset', {method:'POST'});
+    render(await r.json());
+  });
 }
 fetch('/api/state').then(r=>r.json()).then(render);
 </script>

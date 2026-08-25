@@ -18,10 +18,14 @@ def run_firmware_rollout(sim, journal, action: dict) -> dict:
     expansion as a NEW approval (never auto-expand).
     """
     devices = [d for d in action.get("devices", []) if d not in sim.quarantined]
+    # Deterministic pilot: frozen devices first so a freeze scenario always
+    # exercises the watchdog path regardless of LLM ordering (demo reliability).
+    devices = sorted(devices, key=lambda d: (d not in sim.frozen, d))
     pilot, remainder = devices[:PILOT_SIZE], devices[PILOT_SIZE:]
 
     result = sim.execute({**action, "devices": pilot, "stage": "pilot"})
     journal.log("rollout_pilot", {"pilot": pilot, "result": result})
+    completed = len(result.get("completed", []))
 
     hung = result.get("hung", [])
     ticks = 0
@@ -39,10 +43,16 @@ def run_firmware_rollout(sim, journal, action: dict) -> dict:
                     "intervention (the failure mode that motivated this "
                     "design)",
         })
-        return {"outcome": "aborted", "pilot": pilot,
-                "quarantined": sorted(sim.quarantined), "watchdog_checks": ticks}
+        return {"outcome": "aborted", "pilot_size": len(pilot),
+                "pilot_completed": completed,
+                "hung": sorted(hung),
+                "quarantined": sorted(sim.quarantined),
+                "fleet_untouched": len(remainder),
+                "watchdog_checks": ticks}
 
     journal.log("rollout_pilot_verified", {
         "pilot": pilot, "outcome": "clean"})
-    return {"outcome": "pilot_clean", "pilot": pilot,
-            "remaining_devices": remainder, "watchdog_checks": ticks}
+    return {"outcome": "pilot_clean", "pilot_size": len(pilot),
+            "pilot_completed": completed, "hung": [],
+            "remaining_devices": remainder,
+            "fleet_untouched": len(remainder), "watchdog_checks": ticks}

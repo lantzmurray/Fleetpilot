@@ -36,7 +36,8 @@ def run_tick(sim: FleetSimulator, policy: PolicyEngine, journal: Journal) -> dic
             result = sim.execute(action)
             executed.append((action, result))
         elif decision.risk is Risk.HUMAN:
-            escalated.append(action)      # approval inbox (day-3: web UI)
+            # approval inbox: action + the policy reason it was gated
+            escalated.append({"action": action, "reason": decision.reason})
         else:
             blocked.append((action, decision.reason))
 
