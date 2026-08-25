@@ -4,16 +4,16 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../PLAN_All_
 
 ## Tuesday — smooth & freeze the judge path
 
-- [ ] T1: Fix model-resolution bug — `GEMINI_MODEL` read at import time, before `load_dotenv()` runs (both CLI + web paths)
-- [ ] T2: Pin eligible Gemini 3.5+ model ID — verify against live key; do not infer compliance from name
-- [ ] T3: Rollout-result card in UI — pilot size, completed, hung/quarantined, untouched, outcome, watchdog checks
-- [ ] T4: Approval cards show blast radius (device count) + gate reason
-- [ ] T5: Run/session ID — journal isolation per demo run (append-only history retained)
-- [ ] T6: Button loading/disabled states — no double-click duplicates
-- [ ] T7: Health/status strip — model, diagnosis source, fallback state, deployment
-- [ ] T8: Validate Gemini output before policy — required fields, allowed kinds, known device IDs, bounded confidence
-- [ ] T9: Deterministic pilot selection for firmware demo (rehearsals always hit the frozen-device path)
-- [ ] T10: README fixes — drop Strands mention, 5-command quickstart, license, architecture path
+- [x] T1: Fix model-resolution bug — `GEMINI_MODEL` read at import time, before `load_dotenv()` runs (both CLI + web paths)
+- [x] T2: Pin eligible Gemini 3.5+ model ID — verify against live key; do not infer compliance from name
+- [x] T3: Rollout-result card in UI — pilot size, completed, hung/quarantined, untouched, outcome, watchdog checks
+- [x] T4: Approval cards show blast radius (device count) + gate reason
+- [x] T5: Run/session ID — journal isolation per demo run (append-only history retained)
+- [x] T6: Button loading/disabled states — no double-click duplicates
+- [x] T7: Health/status strip — model, diagnosis source, fallback state, deployment
+- [x] T8: Validate Gemini output before policy — required fields, allowed kinds, known device IDs, bounded confidence
+- [x] T9: Deterministic pilot selection for firmware demo (rehearsals always hit the frozen-device path)
+- [x] T10: README fixes — drop Strands mention, 5-command quickstart, license, architecture path
 
 **Tuesday exit gate:** browser alone tells both stories — `30 alerts → 1 RCA → safe auto-fix → 0` and `human gate → 5-device pilot → hang → quarantine → abort`.
 
