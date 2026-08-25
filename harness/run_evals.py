@@ -133,10 +133,28 @@ def eval_rollout_freeze_aborts() -> bool:
     return ok_aborted and ok_quarantine and ok_partial
 
 
+def eval_llm_output_validation() -> bool:
+    from agent.main import validated_actions
+    known = {"DEV-0001", "DEV-0002"}
+    actions = [
+        {"kind": "restart_queue", "devices": ["DEV-0001", "GHOST-9"]},
+        {"kind": "deploy_rootkit", "devices": ["DEV-0001"]},   # hallucinated
+        {"devices": ["DEV-0001"]},                              # no kind
+        {"kind": "ping_device", "devices": ["GHOST-9"]},        # all unknown
+        {"kind": "clear_stuck_job", "devices": ["DEV-0002"]},
+    ]
+    clean = validated_actions(actions, known)
+    ok = check("hallucinated/unknown/malformed actions filtered, known kept",
+               [a["kind"] for a in clean] == ["restart_queue", "clear_stuck_job"]
+               and clean[0]["devices"] == ["DEV-0001"])
+    return ok
+
+
 SCENARIOS = [eval_queue_hang, eval_action_cap, eval_denylist,
              eval_human_gate, eval_firmware_drift, eval_supplies_orders,
              eval_poc_notification_cooldown, eval_end_to_end_diagnosis,
-             eval_rollout_clean_pilot, eval_rollout_freeze_aborts]
+             eval_rollout_clean_pilot, eval_rollout_freeze_aborts,
+             eval_llm_output_validation]
 
 
 def main() -> int:

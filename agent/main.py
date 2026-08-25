@@ -6,6 +6,35 @@ import os
 from dotenv import load_dotenv
 
 from agent.diagnosis import diagnose
+
+ALLOWED_ACTION_KINDS = {"restart_queue", "clear_stuck_job", "ping_device",
+                        "reroute_jobs", "disable_queue", "update_firmware",
+                        "order_supplies", "notify_poc", "escalate"}
+
+
+def validated_actions(actions: list, known_devices: set,
+                      journal=None) -> list:
+    """Defense against malformed/hallucinated LLM output: required fields,
+    allowlisted action kinds, known device IDs only, bounded confidence,
+    bounded device lists. Rejects are journaled, never silently dropped."""
+    clean = []
+    for a in actions:
+        if not isinstance(a, dict) or "kind" not in a:
+            continue
+        if a["kind"] not in ALLOWED_ACTION_KINDS:
+            if journal:
+                journal.log("llm_output_rejected",
+                            {"action": a, "reason": "unknown action kind"})
+            continue
+        devices = [d for d in a.get("devices", []) if d in known_devices]
+        if a.get("devices") and not devices:
+            if journal:
+                journal.log("llm_output_rejected",
+                            {"action": a, "reason": "no known device ids"})
+            continue
+        a = {**a, "devices": devices}
+        clean.append(a)
+    return clean
 from agent.fleet_sim import FleetSimulator
 from agent.journal import Journal
 from agent.policy.risk import PolicyEngine, Risk
@@ -18,9 +47,12 @@ def run_tick(sim: FleetSimulator, policy: PolicyEngine, journal: Journal) -> dic
     journal.log("observe", {"alert_count": len(alerts), "alerts": alerts})
 
     diagnosis = diagnose(alerts)
+    known = {d.device_id for d in sim.devices}
+    diagnosis.proposed_actions = validated_actions(
+        diagnosis.proposed_actions, known, journal)
     journal.log("diagnose", {
         "root_cause": diagnosis.root_cause,
-        "confidence": diagnosis.confidence,
+        "confidence": min(max(diagnosis.confidence or 0.0, 0.0), 1.0),
         "affected_nodes": diagnosis.affected_nodes,
         "source": diagnosis.source,
         "proposed_actions": diagnosis.proposed_actions,
