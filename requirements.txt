@@ -1,0 +1,3 @@
+strands-agents
+python-dotenv
+# LLM client added day-2 (per available credits)
