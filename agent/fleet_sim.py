@@ -90,6 +90,25 @@ class FleetSimulator:
     def active_alerts(self) -> list[dict]:
         return self.alerts
 
+    RESOLVES = {
+        "restart_queue": {"job_stuck"},
+        "clear_stuck_job": {"job_stuck"},
+        "ping_device": {"offline"},
+        "update_firmware": {"firmware_noncompliant"},
+    }
+
     def execute(self, action: dict) -> dict:
-        # TODO(day-2): apply allowlisted actions, clear resolved alerts
-        return {"applied": action, "alerts_cleared": 0}
+        """Apply an allowlisted action and clear the alerts it resolves."""
+        symptoms = self.RESOLVES.get(action.get("kind", ""), set())
+        devices = set(action.get("devices", []))
+        before = len(self.alerts)
+        self.alerts = [
+            a for a in self.alerts
+            if not (a["device"] in devices and a["symptom"] in symptoms)
+        ]
+        # executing a fix also lifts device telemetry where relevant
+        if action.get("kind") == "update_firmware":
+            for d in self.devices:
+                if d.device_id in devices:
+                    d.firmware_ok = True
+        return {"applied": action, "alerts_cleared": before - len(self.alerts)}

@@ -10,7 +10,8 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 
-MODEL = "gemini-2.5-flash"  # rules require Gemini 3.5+ at submission; swap then
+# Rules require Gemini 3.x; override with GEMINI_MODEL if the exact ID differs
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
 SCHEMA = {
     "type": "object",
     "properties": {
