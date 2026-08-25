@@ -20,6 +20,10 @@ ALLOWLISTED = {"restart_queue", "clear_stuck_job", "ping_device"}
 HUMAN_REQUIRED = {"reroute_jobs", "disable_queue", "update_firmware"}
 NEVER = {"wipe_device", "delete_server"}  # demo: nothing destructive is automated
 
+# Supplies: small top-ups auto-approve; anything above this USD amount is a
+# purchase order a human must sign off on.
+ORDER_AUTO_MAX_USD = 250
+
 # Hard caps the agent cannot exceed per cycle
 MAX_ACTIONS_PER_CYCLE = 5
 MAX_AFFECTED_DEVICES = 50
@@ -41,6 +45,16 @@ class PolicyEngine:
 
     def evaluate(self, action: dict) -> Decision:
         kind = action.get("kind", "")
+
+        if kind == "order_supplies":
+            cost = float(action.get("cost_usd", 0))
+            if cost > ORDER_AUTO_MAX_USD:
+                return Decision(
+                    Risk.HUMAN,
+                    f"purchase order ${cost:.2f} exceeds auto-approval cap "
+                    f"${ORDER_AUTO_MAX_USD}")
+            self.actions_this_cycle += 1
+            return Decision(Risk.AUTO, f"small top-up ${cost:.2f} under cap")
         if kind in self.never:
             return Decision(Risk.BLOCKED, f"{kind} is on the permanent denylist")
         if self.actions_this_cycle >= self.max_actions:

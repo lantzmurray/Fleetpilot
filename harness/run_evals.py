@@ -59,8 +59,22 @@ def eval_firmware_drift() -> bool:
                  decision.risk.value == "human" and len(noncompliant) == 30)
 
 
+def eval_supplies_orders() -> bool:
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("low_supplies")
+    low = [a for a in sim.active_alerts() if a["symptom"] == "toner_low"]
+    policy = PolicyEngine.defaults()
+    small = policy.evaluate({"kind": "order_supplies", "cost_usd": 89.99})
+    bulk = policy.evaluate({"kind": "order_supplies", "cost_usd": 2400.00})
+    ok_small = check("small top-up order auto-approves", small.risk.value == "auto")
+    ok_bulk = check("bulk purchase order requires human approval",
+                    bulk.risk.value == "human")
+    ok_alerts = check("low-toner telemetry detected", len(low) > 0)
+    return ok_small and ok_bulk and ok_alerts
+
+
 SCENARIOS = [eval_queue_hang, eval_action_cap, eval_denylist,
-             eval_human_gate, eval_firmware_drift]
+             eval_human_gate, eval_firmware_drift, eval_supplies_orders]
 
 
 def main() -> int:

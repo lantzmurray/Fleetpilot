@@ -10,6 +10,8 @@ class Device:
     server: str
     queue: str
     model: str
+    toner_pct: int = 100   # remaining toner %
+    paper_pct: int = 100   # remaining paper %
 
 
 SERVERS = ["srv-east-1", "srv-east-2", "srv-west-1", "srv-west-2"]
@@ -25,7 +27,8 @@ class FleetSimulator:
         rng = random.Random(seed)
         devices = [
             Device(f"DEV-{i:04d}", rng.choice(SERVERS), f"Q-{i % 40:02d}",
-                   rng.choice(["Xerox", "Ricoh", "HP"]))
+                   rng.choice(["Xerox", "Ricoh", "HP"]),
+                   toner_pct=rng.randint(5, 100), paper_pct=rng.randint(10, 100))
             for i in range(n_devices)
         ]
         return cls(devices=devices)
@@ -59,6 +62,24 @@ class FleetSimulator:
                         "device": d.device_id, "server": d.server,
                         "queue": d.queue, "symptom": "firmware_noncompliant",
                         "severity": "medium", "model": vendor,
+                    })
+        elif name == "low_supplies":
+            # Supplies management: fleet-wide toner/paper telemetry. The agent
+            # forecasts run-out, groups orders by vendor, and proposes a PO —
+            # spending money is always human-gated.
+            for d in self.devices:
+                if d.toner_pct <= 15:
+                    self.alerts.append({
+                        "device": d.device_id, "server": d.server,
+                        "queue": d.queue, "symptom": "toner_low",
+                        "severity": "medium", "model": d.model,
+                        "toner_pct": d.toner_pct,
+                    })
+                if d.paper_pct <= 10:
+                    self.alerts.append({
+                        "device": d.device_id, "server": d.server,
+                        "queue": d.queue, "symptom": "paper_low",
+                        "severity": "low", "paper_pct": d.paper_pct,
                     })
         else:
             raise ValueError(f"unknown scenario {name}")
