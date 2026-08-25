@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FleetPilot — Audited AIOps for Device Fleets</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3;
+          --dim:#8b949e; --green:#3fb950; --amber:#d29922; --red:#f85149;
+          --blue:#58a6ff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:14px/1.5 -apple-system, "Segoe UI", sans-serif; padding:20px; }
+  h1 { font-size:20px; } h1 span { color:var(--dim); font-weight:400; font-size:13px; }
+  .grid { display:grid; grid-template-columns: 2fr 1fr; gap:16px; margin-top:16px; }
+  .panel { background:var(--panel); border:1px solid var(--line);
+           border-radius:8px; padding:14px; }
+  .panel h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em;
+              color:var(--dim); margin-bottom:10px; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 0; }
+  button { background:#21262d; color:var(--fg); border:1px solid var(--line);
+           border-radius:6px; padding:7px 12px; cursor:pointer; font-size:13px; }
+  button:hover { border-color:var(--blue); }
+  button.run { background:#1f6feb33; border-color:var(--blue); }
+  .stats { display:flex; gap:22px; margin:12px 0 2px; flex-wrap:wrap; }
+  .stat b { font-size:22px; display:block; }
+  .stat span { color:var(--dim); font-size:12px; }
+  .rca { border-left:3px solid var(--blue); padding:8px 12px; margin:8px 0;
+         background:#0d1117; border-radius:4px; }
+  .rca .src { color:var(--dim); font-size:11px; }
+  .approval { border:1px solid var(--amber); background:#d2992215;
+              border-radius:8px; padding:12px; margin-bottom:10px; }
+  .approval h3 { color:var(--amber); font-size:13px; margin-bottom:6px; }
+  .approval button { margin-right:8px; }
+  .approve { border-color:var(--green); color:var(--green); }
+  .reject { border-color:var(--red); color:var(--red); }
+  .log { font:12px/1.7 ui-monospace, monospace; max-height:340px;
+         overflow-y:auto; }
+  .log .kind { color:var(--blue); }
+  .log .gate-auto { color:var(--green); } .log .gate-human { color:var(--amber); }
+  .log .gate-blocked, .log .rejected { color:var(--red); }
+  .alerts { max-height:220px; overflow-y:auto; font:12px/1.6 ui-monospace, monospace; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px;
+          font-size:11px; border:1px solid var(--line); }
+  .sev-critical { color:var(--red); border-color:var(--red); }
+  .sev-high { color:var(--amber); border-color:var(--amber); }
+  .sev-medium { color:var(--blue); border-color:var(--blue); }
+  .sev-low { color:var(--dim); }
+  .empty { color:var(--dim); font-style:italic; }
+</style>
+</head>
+<body>
+<h1>FleetPilot <span>— agent proposes · policy engine disposes · everything journaled</span></h1>
+
+<div class="stats panel">
+  <div class="stat"><b id="s-devices">–</b><span>devices</span></div>
+  <div class="stat"><b id="s-servers">–</b><span>print servers</span></div>
+  <div class="stat"><b id="s-alerts">–</b><span>open alerts</span></div>
+</div>
+
+<div class="controls">
+  <span style="color:var(--dim); align-self:center; font-size:12px">inject scenario →</span>
+  <button class="run" onclick="run('queue_hang')">Queue hang (30 alerts)</button>
+  <button class="run" onclick="run('alert_storm')">Alert storm (150 offline)</button>
+  <button class="run" onclick="run('firmware_drift')">Firmware drift</button>
+  <button class="run" onclick="run('low_supplies')">Low supplies</button>
+  <button onclick="reset()">Reset fleet</button>
+</div>
+
+<div class="grid">
+  <div>
+    <div class="panel" style="margin-bottom:16px">
+      <h2>Latest diagnosis</h2>
+      <div id="rca" class="empty">no cycle run yet — inject a scenario</div>
+    </div>
+    <div class="panel">
+      <h2>Open alerts</h2>
+      <div id="alerts" class="alerts empty">–</div>
+    </div>
+  </div>
+  <div>
+    <div class="panel" style="margin-bottom:16px">
+      <h2>Approval inbox</h2>
+      <div id="approvals" class="empty">nothing awaiting approval</div>
+    </div>
+    <div class="panel">
+      <h2>Audit journal (last 50)</h2>
+      <div id="journal" class="log empty">–</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function render(s) {
+  $('s-devices').textContent = s.fleet.devices;
+  $('s-servers').textContent = s.fleet.servers.length;
+  $('s-alerts').textContent = s.fleet.alerts_open;
+
+  const sum = s.last_summary || {};
+  $('rca').innerHTML = sum.root_cause
+    ? `<div class="rca"><b>${esc(sum.root_cause)}</b><br>
+       confidence ${sum.confidence} · source: ${sum.diagnosis_source}<br>
+       executed: ${sum.executed.length} · escalated: ${sum.escalated.length} ·
+       blocked: ${sum.blocked.length}</div>` : '';
+
+  $('alerts').innerHTML = s.alerts.length
+    ? s.alerts.slice(0,100).map(a =>
+        `<div><span class="pill sev-${a.severity}">${a.severity}</span>
+         ${a.device} ${a.symptom} @ ${a.server}</div>`).join('')
+    : '<span class="empty">all clear ✓</span>';
+
+  $('approvals').innerHTML = s.pending_approvals.length
+    ? s.pending_approvals.map(p =>
+        `<div class="approval"><h3>APPROVAL REQUIRED</h3>
+         <b>${esc(p.action.kind)}</b> — ${esc(p.action.rationale||'')}<br>
+         ${p.action.cost_usd ? `cost: $${p.action.cost_usd}` : ''}
+         <div style="margin-top:8px">
+           <button class="approve" onclick="decide('${p.id}','approve')">Approve</button>
+           <button class="reject" onclick="decide('${p.id}','reject')">Reject</button>
+         </div></div>`).join('')
+    : '<span class="empty">nothing awaiting approval</span>';
+
+  $('journal').innerHTML = s.journal.map(e =>
+    `<div><span class="kind journal-${cls(e)}">[${e.kind}]</span>
+     ${summ(e)}</div>`).join('');
+}
+
+function cls(e){ return e.kind==='gate' ? 'gate-' +
+  (typeof e.payload.decision==='string' ? e.payload.decision : '') : e.kind; }
+function summ(e){ const p=e.payload;
+  if (e.kind==='diagnose') return esc(p.root_cause);
+  if (e.kind==='gate') return `${p.action.kind} → ${p.decision} (${esc(p.reason)})`;
+  if (e.kind==='human_decision') return `${p.action.kind} → ${p.decision}`;
+  if (e.kind==='observe') return `${p.alert_count} alerts observed`;
+  if (e.kind==='cycle_complete') return `${p.executed.length} executed,
+    ${p.escalated.length} escalated, ${p.blocked.length} blocked`;
+  return ''; }
+function esc(s){ return String(s??'').replace(/[<>&]/g,
+  c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+
+async function run(name){
+  const r = await fetch('/api/scenario/'+name, {method:'POST'});
+  render(await r.json());
+}
+async function decide(id, act){
+  const r = await fetch(`/api/${act}/${id}`, {method:'POST'});
+  render(await r.json());
+}
+async function reset(){
+  const r = await fetch('/api/reset', {method:'POST'});
+  render(await r.json());
+}
+fetch('/api/state').then(r=>r.json()).then(render);
+</script>
+</body>
+</html>

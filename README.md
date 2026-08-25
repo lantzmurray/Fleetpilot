@@ -33,9 +33,23 @@ journal/  Append-only audit log (SQLite)
 
 ## Quickstart
 ```bash
-pip install -r requirements.txt
-cp .env.example .env   # add keys
-python -m agent.main --demo
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.example .env   # add your Gemini API key
+# CLI demo (single agent cycle):
+.venv/bin/python -m agent.main --demo
+# Web dashboard:
+.venv/bin/python -m uvicorn web.app:app --port 8080   # → http://localhost:8080
+# Eval suite (offline, no API key needed):
+.venv/bin/python -m harness.run_evals
+```
+
+## Deploy to Google Cloud Run
+```bash
+gcloud run deploy fleetpilot \
+  --source . \
+  --region us-central1 \
+  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY \
+  --allow-unauthenticated
 ```
 
 ## Status

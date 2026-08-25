@@ -9,7 +9,9 @@ class Journal:
     def __init__(self, path: str = "journal/audit.db"):
         if path != ":memory:":
             os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        self.conn = sqlite3.connect(path)
+        # check_same_thread=False: FastAPI may call from worker threads;
+        # single-process, short writes — safe.
+        self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS events ("
             " id INTEGER PRIMARY KEY, ts REAL, kind TEXT, payload TEXT)")
