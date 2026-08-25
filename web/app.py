@@ -16,6 +16,7 @@ from agent.fleet_sim import FleetSimulator
 from agent.journal import Journal
 from agent.main import run_tick
 from agent.policy.risk import PolicyEngine, Risk
+from agent.rollout import run_firmware_rollout
 
 load_dotenv()
 
@@ -62,9 +63,26 @@ def approve(approval_id: str):
     if approval_id not in state.pending:
         return {"error": "unknown approval id"}
     action = state.pending.pop(approval_id)
-    result = state.sim.execute(action)
     state.journal.log("human_decision",
-                      {"action": action, "decision": "APPROVED", "result": result})
+                      {"action": action, "decision": "APPROVED"})
+
+    if action.get("kind") == "update_firmware":
+        # staged rollout: pilot batch -> watchdog -> quarantine OR a new
+        # approval to expand fleet-wide (never auto-expand)
+        report = run_firmware_rollout(state.sim, state.journal, action)
+        state.journal.log("rollout_report", report)
+        if report["outcome"] == "pilot_clean" and report["remaining_devices"]:
+            new_id = str(uuid.uuid4())[:8]
+            state.pending[new_id] = {
+                **action,
+                "devices": report["remaining_devices"],
+                "rationale": "Pilot batch verified clean — expand staged "
+                             "rollout to remaining fleet",
+            }
+    else:
+        result = state.sim.execute(action)
+        state.journal.log("human_decision_result",
+                          {"action": action, "result": result})
     return snapshot()
 
 

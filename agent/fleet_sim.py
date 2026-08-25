@@ -21,6 +21,8 @@ SERVERS = ["srv-east-1", "srv-east-2", "srv-west-1", "srv-west-2"]
 class FleetSimulator:
     devices: list[Device] = field(default_factory=list)
     alerts: list[dict] = field(default_factory=list)
+    frozen: set[str] = field(default_factory=set)  # devices whose pushes hang
+    quarantined: set[str] = field(default_factory=set)
 
     @classmethod
     def seed(cls, n_devices: int = 200, seed: int = 42) -> "FleetSimulator":
@@ -63,6 +65,13 @@ class FleetSimulator:
                         "queue": d.queue, "symptom": "firmware_noncompliant",
                         "severity": "medium", "model": vendor,
                     })
+        elif name == "firmware_push_freezes":
+            # Same drift, but a few devices' pushes hang mid-flight — the
+            # real-world failure mode that motivated guarded rollouts (pushes
+            # freeze, run forever, or die on unexpected device-page states).
+            self.inject_scenario("firmware_drift")
+            noncompliant = [a["device"] for a in self.alerts]
+            self.frozen = set(noncompliant[:3])  # first 3 devices hang
         elif name == "low_supplies":
             # Supplies management: fleet-wide toner/paper telemetry. The agent
             # forecasts run-out, groups orders by vendor, and proposes a PO —
@@ -98,17 +107,30 @@ class FleetSimulator:
     }
 
     def execute(self, action: dict) -> dict:
-        """Apply an allowlisted action and clear the alerts it resolves."""
-        symptoms = self.RESOLVES.get(action.get("kind", ""), set())
+        """Apply an allowlisted action and clear the alerts it resolves.
+
+        Firmware pushes support staged rollouts: action["stage"] in
+        {"pilot", "full"}. Devices in self.frozen hang during a push — the
+        push starts but never completes (the classic frozen-firmware-push
+        failure). The watchdog in agent/rollout.py detects and reacts.
+        """
+        kind = action.get("kind", "")
         devices = set(action.get("devices", []))
+
+        if kind == "update_firmware":
+            hung = sorted(devices & self.frozen)
+            completed = sorted(devices - self.frozen - self.quarantined)
+            before = len(self.alerts)
+            self.alerts = [a for a in self.alerts
+                           if a["device"] not in set(completed)]
+            return {"applied": action, "stage": action.get("stage", "full"),
+                    "completed": completed, "hung": hung,
+                    "alerts_cleared": before - len(self.alerts)}
+
+        symptoms = self.RESOLVES.get(kind, set())
         before = len(self.alerts)
         self.alerts = [
             a for a in self.alerts
             if not (a["device"] in devices and a["symptom"] in symptoms)
         ]
-        # executing a fix also lifts device telemetry where relevant
-        if action.get("kind") == "update_firmware":
-            for d in self.devices:
-                if d.device_id in devices:
-                    d.firmware_ok = True
         return {"applied": action, "alerts_cleared": before - len(self.alerts)}

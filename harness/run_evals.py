@@ -101,9 +101,42 @@ def eval_end_to_end_diagnosis() -> bool:
     return ok_rca and ok_fix and ok_src
 
 
+def eval_rollout_clean_pilot() -> bool:
+    from agent.rollout import run_firmware_rollout
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("firmware_drift")
+    devices = [a["device"] for a in sim.active_alerts()]
+    report = run_firmware_rollout(sim, Journal(":memory:"),
+                                  {"kind": "update_firmware", "devices": devices})
+    ok = check("clean pilot verified, expansion proposed (not auto-run)",
+               report["outcome"] == "pilot_clean" and
+               len(report["remaining_devices"]) == len(devices) - 5)
+    return ok
+
+
+def eval_rollout_freeze_aborts() -> bool:
+    from agent.rollout import run_firmware_rollout
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("firmware_push_freezes")
+    devices = [a["device"] for a in sim.active_alerts()]
+    alerts_before = len(sim.active_alerts())
+    report = run_firmware_rollout(sim, Journal(":memory:"),
+                                  {"kind": "update_firmware", "devices": devices})
+    ok_aborted = check("hung push detected -> rollout aborted",
+                       report["outcome"] == "aborted")
+    ok_quarantine = check("frozen devices quarantined",
+                          sim.frozen <= sim.quarantined)
+    # the two non-frozen pilot devices DID complete; frozen ones stay alerting
+    cleared = alerts_before - len(sim.active_alerts())
+    ok_partial = check("continue-on-failure: clean devices completed "
+                       f"({cleared} cleared)", cleared == 2)
+    return ok_aborted and ok_quarantine and ok_partial
+
+
 SCENARIOS = [eval_queue_hang, eval_action_cap, eval_denylist,
              eval_human_gate, eval_firmware_drift, eval_supplies_orders,
-             eval_poc_notification_cooldown, eval_end_to_end_diagnosis]
+             eval_poc_notification_cooldown, eval_end_to_end_diagnosis,
+             eval_rollout_clean_pilot, eval_rollout_freeze_aborts]
 
 
 def main() -> int:

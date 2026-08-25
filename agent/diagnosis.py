@@ -8,7 +8,10 @@ LLM verifies rather than hallucinates.
 """
 import os
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+
+GEMINI_TIMEOUT_S = 45  # degrade to heuristic rather than hang the demo
 
 # Rules require Gemini 3.x; override with GEMINI_MODEL if the exact ID differs
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
@@ -118,14 +121,26 @@ def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
         "order_supplies, notify_poc. Spend-averse: prefer the smallest "
         "action that resolves the most alerts."
     )
-    response = client.models.generate_content(
-        model=MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=SCHEMA,
-        ),
-    )
+
+    def call():
+        return client.models.generate_content(
+            model=MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=SCHEMA,
+            ),
+        )
+
+    try:
+        # hard timeout: SDK retries with backoff can stall minutes on rate
+        # limits; the heuristic answer is always available as a fallback.
+        # NB: no `with` block — its shutdown(wait=True) would still block on
+        # the hung call; we abandon the thread instead.
+        pool = ThreadPoolExecutor(max_workers=1)
+        response = pool.submit(call).result(timeout=GEMINI_TIMEOUT_S)
+    except Exception:
+        return heuristic
     result = _parse(response.text)
     if result is None:  # malformed despite schema — never trust blindly
         return heuristic
