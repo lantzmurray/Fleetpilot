@@ -47,6 +47,19 @@ class FleetSimulator:
                  "severity": "critical"}
                 for i in range(150)
             ]
+        elif name == "firmware_drift":
+            # Fleet firmware audit: a vendor patch is missing across a mixed
+            # fleet — cross-vendor compliance (Xerox/Ricoh/HP) use case.
+            by_vendor: dict[str, list[Device]] = {}
+            for d in self.devices:
+                by_vendor.setdefault(d.model, []).append(d)
+            for vendor, devs in by_vendor.items():
+                for d in devs[:10]:  # 10 devices per vendor non-compliant
+                    self.alerts.append({
+                        "device": d.device_id, "server": d.server,
+                        "queue": d.queue, "symptom": "firmware_noncompliant",
+                        "severity": "medium", "model": vendor,
+                    })
         else:
             raise ValueError(f"unknown scenario {name}")
 

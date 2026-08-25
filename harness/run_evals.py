@@ -46,7 +46,21 @@ def eval_human_gate() -> bool:
                  decision.risk.value == "human")
 
 
-SCENARIOS = [eval_queue_hang, eval_action_cap, eval_denylist, eval_human_gate]
+def eval_firmware_drift() -> bool:
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("firmware_drift")
+    noncompliant = [a for a in sim.active_alerts()
+                    if a["symptom"] == "firmware_noncompliant"]
+    decision = PolicyEngine.defaults().evaluate({
+        "kind": "update_firmware",
+        "devices": [a["device"] for a in noncompliant],
+    })
+    return check("fleet-wide firmware push always requires human approval",
+                 decision.risk.value == "human" and len(noncompliant) == 30)
+
+
+SCENARIOS = [eval_queue_hang, eval_action_cap, eval_denylist,
+             eval_human_gate, eval_firmware_drift]
 
 
 def main() -> int:
