@@ -23,11 +23,10 @@ correlating manually. Full autonomy isn't trusted — yet.
 
 ## Layout
 ```
-agent/    Strands agent core (loop, tools, memory)
+agent/    Custom orchestration, Gemini diagnosis, policy, and scoped tools
   policy/ Deterministic risk engine — the LLM never bypasses this
 harness/  Eval scenarios + runner (crash day, alert storm, conflicting signals)
 web/      Demo UI (dashboard + approval inbox)
-docs/     Architecture diagram, submission assets
 journal/  Append-only audit log (SQLite)
 ```
 
@@ -44,15 +43,22 @@ cp .env.example .env   # add your Gemini API key
 ```
 
 ## Deploy to Google Cloud Run
+Create the `fleetpilot-gemini-api-key` secret first, then deploy with the exact
+contest-eligible model ID confirmed for your account:
 ```bash
 gcloud run deploy fleetpilot \
   --source . \
   --region us-central1 \
-  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY \
+  --set-secrets GEMINI_API_KEY=fleetpilot-gemini-api-key:latest \
+  --set-env-vars GEMINI_MODEL="<confirmed Gemini 3.5+ model ID>" \
   --allow-unauthenticated
 ```
 
 ## Status
-Scaffold — see `docs/PLAN.md` for the day-by-day build plan.
+Working prototype: 10/10 offline eval scenarios pass; the local dashboard and a
+live Gemini diagnosis have been exercised. Cloud Run deployment, full web/API
+test coverage, and the contest demo gate are still pending. See
+[`CONTEST_PLAN.md`](CONTEST_PLAN.md)
+for the current execution plan.
 
 *Paper/demo only. Not affiliated with any employer. Demo data is synthetic.*

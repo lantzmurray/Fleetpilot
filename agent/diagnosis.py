@@ -13,8 +13,17 @@ from dataclasses import dataclass
 
 GEMINI_TIMEOUT_S = 45  # degrade to heuristic rather than hang the demo
 
-# Rules require Gemini 3.x; override with GEMINI_MODEL if the exact ID differs
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
+# Rules require Gemini 3.5 or newer; all verified available to our key Aug 25.
+# Resolved lazily per call — .env/load_dotenv may run after this module imports.
+# Previews spike with 503s under demand, so we cascade newest-first and record
+# which model actually answered (surfaced in the health strip).
+MODEL_CASCADE = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash"]
+last_model_used: str | None = None
+
+
+def model_candidates() -> list[str]:
+    pinned = os.environ.get("GEMINI_MODEL")
+    return [pinned] if pinned else MODEL_CASCADE
 SCHEMA = {
     "type": "object",
     "properties": {
@@ -122,9 +131,11 @@ def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
         "action that resolves the most alerts."
     )
 
-    def call():
+    global last_model_used
+
+    def call(model: str):
         return client.models.generate_content(
-            model=MODEL,
+            model=model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -132,14 +143,21 @@ def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
             ),
         )
 
-    try:
-        # hard timeout: SDK retries with backoff can stall minutes on rate
-        # limits; the heuristic answer is always available as a fallback.
-        # NB: no `with` block — its shutdown(wait=True) would still block on
-        # the hung call; we abandon the thread instead.
-        pool = ThreadPoolExecutor(max_workers=1)
-        response = pool.submit(call).result(timeout=GEMINI_TIMEOUT_S)
-    except Exception:
+    response = None
+    for model in model_candidates():
+        try:
+            # hard timeout: SDK retries with backoff can stall minutes on
+            # rate limits; the heuristic answer is always the fallback.
+            # NB: no `with` block — shutdown(wait=True) would still block
+            # on a hung call; we abandon the thread instead.
+            pool = ThreadPoolExecutor(max_workers=1)
+            response = pool.submit(call, model).result(
+                timeout=GEMINI_TIMEOUT_S)
+            last_model_used = model
+            break
+        except Exception:
+            continue  # 503/timeouts on one model -> try the next
+    if response is None:
         return heuristic
     result = _parse(response.text)
     if result is None:  # malformed despite schema — never trust blindly

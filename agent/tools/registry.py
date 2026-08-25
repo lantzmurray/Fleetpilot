@@ -1,12 +1,13 @@
-"""Tool registry — exposes fleet operations to the Strands agent.
+"""Tool registry — exposes scoped fleet operations to the agent workflow.
 Each tool wraps FleetSimulator/PolicyEngine so the agent can OBSERVE and
 PROPOSE, but never execute directly."""
 
 
 def build_tools(sim) -> dict:
-    """Return the tool surface exposed to the Strands agent.
+    """Return the tool surface exposed to the diagnosis/action workflow.
 
-    Day-2: decorate these with Strands @tool so the agent can call them.
+    The registry keeps simulator access narrow and explicit so model-generated
+    proposals cannot call arbitrary application functions.
     Execution-bearing tools route through PolicyEngine.evaluate first.
     """
     def supplies_report() -> list[dict]:

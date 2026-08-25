@@ -1,0 +1,244 @@
+# FleetPilot Contest Execution Plan
+
+*Authoritative plan as of Tuesday, August 25, 2026 · Test day: Wednesday, August 26 · Demo-ready target: Thursday, August 27 · Submission deadline: Monday, August 31, 5:00 PM PT / 8:00 PM ET*
+
+## Contest position
+
+**Product/domain: Enterprise device-fleet operations**  
+**Contest category: Taskmaster**  
+**Also eligible for:** Individual/Hobbyist and Best Architectural Design  
+**One-sentence pitch:** FleetPilot turns a device-fleet alert storm into one topology-aware diagnosis, safely completes low-risk remediation, and stops risky firmware rollouts before they become fleet-wide outages.
+
+FleetPilot remains an enterprise-fleet product; choosing Taskmaster does not turn
+it into a personal task queue or change its enterprise operations story.
+Taskmaster is the honest **submission category** for the code that exists:
+one agentic workflow with separate diagnosis, deterministic policy, tools,
+state, and audit components. Devpost's category named Fortified Enterprise
+Fleet has a narrower meaning: a scalable network of institutional agents,
+delegation to specialized sub-agents, registry/runtime/memory/identity/gateway
+controls, and long-running enterprise context. Adding cosmetic sub-agents
+before Thursday would weaken the entry.
+
+The Taskmaster story is stronger:
+
+- **Enterprise fleet friction:** one infrastructure failure produces dozens of device alerts, and firmware pushes can freeze halfway through a fleet.
+- **Autonomous completion:** FleetPilot correlates a 30-alert queue incident, selects an allowlisted fix, executes it, and verifies that alerts clear.
+- **Safety twist:** the same agent cannot push high-impact firmware changes without approval; an approved rollout starts with a pilot and aborts on hangs.
+
+## Verified contest constraints
+
+- Every category must use Gemini 3.5 or newer through Gemini API or Vertex AI, at least one accepted Google agent framework (including GenAI SDK), and at least one Google Cloud infrastructure service.
+- Submit a category, description, repository with reproducible setup, architecture diagram, and an approximately four-minute demo.
+- The video must be no longer than four minutes; only the first four minutes may be evaluated.
+- The video must show live, unedited execution and visible Google Cloud proof, such as a `.run.app` URL or Cloud Run console/logs.
+- A Devpost manager said a uniform speed-up of one continuous recording generally reads as unedited if disclosed. The safer target remains one continuous take at normal speed with no cuts, splices, overlays, or inserted footage.
+- Projects must have been created during the submission period. Disclose any pre-existing work incorporated into the project.
+
+Official references: [contest overview](https://allthingsagentichackathon.devpost.com/) · [rules](https://allthingsagentichackathon.devpost.com/rules) · [unedited-video clarification](https://allthingsagentichackathon.devpost.com/forum_topics/44809-demo-video-is-speeding-up-the-whole-recording-allowed-under-unedited)
+
+## Actual progress through August 25
+
+### Verified locally
+
+- Synthetic 200-device/four-server fleet simulator.
+- Topology-aware RCA with a live Gemini path and deterministic fallback.
+- FastAPI dashboard with alert board, RCA result, approval inbox, and audit journal.
+- Deterministic policy: allowlist, denylist, action cap, blast-radius gate, purchase cap, and notification cooldown.
+- Staged firmware rollout: five-device pilot, watchdog, abort, quarantine, and no automatic fleet-wide expansion.
+- Gemini timeout guard degrades to the heuristic path instead of hanging indefinitely.
+- Existing harness passes **10/10 scenarios** (18 visible assertions) on August 25.
+- Live CLI run returned `diagnosis_source: gemini` and cleared the 30-alert queue-hang scenario.
+- Local web smoke check returned HTTP 200 for state, reset, and scenario endpoints.
+- Dockerfile exists for Cloud Run packaging.
+- Git working tree was clean at `b65784b` before this plan/README update.
+
+### Not yet proven
+
+- Cloud Run deployment is unverified; no service/project evidence was visible from the current local configuration.
+- The default model is `gemini-3-flash-preview`, while the rules require Gemini 3.5 or newer. The exact available/eligible model ID must be confirmed and pinned before deployment. Do not infer compliance from the name.
+- The firmware result is recorded in the backend journal but is not explained clearly in the UI. Several rollout events render as names with blank summaries.
+- Gemini can vary the proposed device list, so the frozen-pilot outcome is not yet deterministic enough for a one-take demo.
+- Reset can retain prior SQLite journal entries, which can pollute rehearsals.
+- The custom harness is useful evidence but is not yet a conventional unit/integration/E2E suite with measured coverage.
+- README/repository setup still needs clean-checkout verification, a license decision, and the final architecture asset.
+
+## Locked demo story
+
+The judged demo uses exactly two scenarios:
+
+1. **Queue hang:** 30 synthetic alerts collapse into one Gemini RCA; policy permits a low-risk queue remediation; FleetPilot executes it and verifies zero alerts remain. This proves the Taskmaster requirement: a complete workflow with autonomous action, not a chatbot.
+2. **Guarded firmware rollout:** 30 compliance alerts produce a firmware proposal; policy requires approval; approval starts only a five-device pilot; the watchdog catches frozen pushes, quarantines affected devices, aborts expansion, and leaves the rest of the fleet untouched. This proves failure tolerance and governed autonomy.
+
+Supplies and alert storm remain test/README evidence. Do not tour them in the video.
+
+## Dependency-ordered work plan
+
+### Tuesday night — smooth and freeze the judge path
+
+**Goal:** make both outcomes obvious without lengthy narration.
+
+- Lock the Devpost category to **Taskmaster** in all submission material.
+- Add a persistent rollout-result card showing pilot size, completed count, hung/quarantined devices, untouched count, outcome, and watchdog checks.
+- Show the approval's device count/blast radius and the reason it was gated.
+- Give each demo run a run/session ID and display only the current run's journal by default. Retain append-only history rather than deleting evidence.
+- Put Queue Hang and Guarded Firmware Rollout first. Move other scenarios under “Additional scenarios.”
+- Add loading/disabled button states so double-clicks cannot duplicate incidents or approvals.
+- Add a health/status strip that reports deployment, diagnosis source, configured model, and fallback state truthfully.
+- Validate Gemini output before policy evaluation: required fields, allowed action, known device IDs, bounded confidence, and safe device count.
+- Make the firmware demo's pilot selection deterministic after Gemini proposes the action, so rehearsals always exercise the known frozen-device failure path.
+- Confirm and pin an exact contest-eligible Gemini 3.5+ model ID.
+- Fix the current import-time model resolution so `.env` and Cloud Run's
+  `GEMINI_MODEL` value are loaded before the diagnosis module selects a model.
+- Correct README setup/status drift and add the missing secret-free example/configuration, license, and architecture path if absent.
+
+**Tuesday exit gate:** the browser alone communicates both `30 alerts → one RCA → safe auto-fix → 0 alerts` and `human gate → 5-device pilot → hang detected → quarantine → expansion aborted`.
+
+### Wednesday — test and deploy
+
+No new product features after testing begins unless they fix a failed gate.
+
+#### Gate 1: configuration and clean-checkout reproducibility
+
+- Confirm the model ID, framework, Cloud Run service, environment variables, and secret handling.
+- Install from a fresh virtual environment using only repository instructions.
+- Ensure every README command and referenced file exists.
+- Run compilation, dependency, lint, and secret scans.
+
+**Pass:** no Strands/AWS claims remain; no secrets are committed; clean quickstart succeeds.
+
+#### Gate 2: deterministic unit/eval suite
+
+- Retain the current 10-scenario harness with all model credentials disabled.
+- Add pytest coverage for correlation, empty alerts, policy controls, clean/frozen pilots, quarantine, and no automatic expansion.
+- Mock Gemini paths: valid response, malformed JSON, invalid action/device, timeout, quota/error, and labeled deterministic fallback.
+- Measure coverage and reach at least 80% for the submitted code.
+
+**Pass:** all tests pass twice; harness is 10/10; coverage is at least 80%; offline tests require no network.
+
+#### Gate 3: web/API integration
+
+Automate the actual FastAPI sequence:
+
+- health/state returns 200;
+- new demo run begins with 200 devices, zero alerts, zero approvals, and a current-run journal;
+- queue hang produces one relevant remediation and ends with zero alerts;
+- firmware-freeze produces one relevant human-gated action;
+- approval runs only a five-device pilot and reports the expected abort/quarantine outcome;
+- invalid scenario and approval IDs return clear 4xx responses;
+- a second run cannot inherit stale approvals or visible events from the first.
+
+**Pass:** the full API sequence is deterministic across five local runs.
+
+#### Gate 4: live Gemini stability
+
+- Run three consecutive queue and firmware diagnoses against the pinned contest model.
+- Capture model, source, elapsed time, action kind, affected devices, and fallback reason.
+- Use a tested SDK timeout that keeps the whole video under four minutes. Target a warmed response under 15 seconds. Never silently label a fallback as Gemini.
+
+**Pass:** 3/3 runs per scenario produce safe, relevant proposals with `source: gemini`; no run hangs.
+
+#### Gate 5: container and Cloud Run
+
+- Build and run the exact Docker image locally; test UI and both workflows.
+- Configure a Git remote and push the exact demo commit.
+- Deploy one Cloud Run service with the Gemini key supplied through environment/secret configuration.
+- Verify the public `.run.app` URL, current revision/commit, live Gemini path, health/status strip, journal isolation, and logs.
+- Record the service URL, region, revision, and commit SHA.
+
+**Pass:** three consecutive hosted rehearsals finish inside the demo budget and visibly show Google Cloud, the eligible Gemini model, queue remediation, and firmware-abort evidence.
+
+**Wednesday hard gate:** do not call the project demo-ready unless all five gates pass. If Cloud Run is blocked, Thursday starts with deployment recovery, not recording.
+
+### Thursday — rehearse and record
+
+#### Rehearsal gate
+
+- Warm the Cloud Run service.
+- Open the `.run.app` URL and create a fresh demo run before timing.
+- Complete three consecutive one-take rehearsals at normal speed.
+- Each must finish under 3:15, use Gemini rather than fallback, and end with the expected states.
+- Use one browser window and four intentional clicks: Queue Hang, Reset/New Run, Guarded Firmware Rollout, Approve Pilot.
+
+**Pass:** 3/3 rehearsals are correct, legible, and under 3:15.
+
+#### Recording rule
+
+- Record one continuous take at 1× speed.
+- Keep the `.run.app` address visible long enough to prove Google Cloud.
+- No slides, terminal switching, cuts, stitched clips, trimmed waits, or hidden errors.
+- If a take fails, stop and record a complete new take.
+- Uniform speed-up with a disclosure is last-resort only.
+
+## Tight demo run-of-show (target 2:45–3:05)
+
+| Time | Screen/action | Spoken point |
+| --- | --- | --- |
+| 0:00–0:15 | Cloud Run URL and clean dashboard | “Thirty device alerts can be one server problem. FleetPilot diagnoses and acts, but risky changes remain governed.” |
+| 0:15 | Click **Queue Hang** | “This synthetic incident produces 30 stuck-job alerts.” |
+| 0:15–0:50 | Live Gemini RCA and completed action | “Gemini correlates one server-level cause. Policy permits the low-risk fix, FleetPilot executes it, and all 30 alerts clear.” |
+| 0:50 | Click **New Run** | “Now the failure mode that motivated this build.” |
+| 0:55 | Click **Guarded Firmware Rollout** | “Thirty devices need firmware, but this action has fleet-wide blast radius.” |
+| 0:55–1:30 | Live RCA and approval card | “Gemini proposes the remediation. Deterministic policy stops it for human approval.” |
+| 1:30 | Click **Approve Pilot** | “Approval starts only a five-device pilot.” |
+| 1:30–2:05 | Rollout result | “The watchdog catches frozen pushes, quarantines those devices, and aborts before expansion.” |
+| 2:05–2:35 | Audit journal/status | “The audit records the proposal, policy decision, approval, action, watchdog, and outcome.” |
+| 2:35–2:55 | Hold final state | “FleetPilot completes safe work automatically and stops exactly where human judgment belongs.” |
+
+Do not narrate the repository layout, every policy rule, every scenario, or every test. Put those in the README and submission text.
+
+## Friday through submission
+
+### Friday
+
+- Freeze features.
+- Finalize README: five-command quickstart, hosted URL, model/framework/cloud details, eval table, failure behavior, and synthetic/public-safe disclosure.
+- Add one clean architecture diagram that matches the shipped system.
+- Record exact test commands and coverage.
+
+### Saturday
+
+- Write the Devpost description around Taskmaster, BYOF, and the two locked workflows.
+- Upload the continuous-take video publicly to YouTube or Vimeo.
+- Verify repository access, license, setup, diagram, video, and hosted endpoint from a clean/incognito browser.
+- Disclose pre-existing work if any was incorporated.
+
+### Sunday
+
+- Run the final deployed-commit verification.
+- Submit Sunday evening and save the confirmation receipt.
+
+### Monday
+
+- Emergency buffer only. Internal hard stop: noon PT.
+
+## Scope freeze
+
+### Must ship
+
+- Enterprise fleet queue remediation entered under the Taskmaster workflow category.
+- Gemini-backed guarded firmware workflow on Cloud Run.
+- Deterministic policy, approval, pilot, watchdog, quarantine, and abort.
+- Clear current-run audit trail.
+- Automated offline, API, failure, container, and deployed tests.
+- Short unedited video, accurate README, license, and architecture diagram.
+
+### Keep in repo, omit from demo
+
+- Alert-storm correlation.
+- Toner/paper workflows and cooldown.
+- Clean firmware-pilot expansion proposal.
+
+### Do not build before submission
+
+- Multi-agent orchestration merely to chase the Fortified category.
+- Authentication, multi-user tenancy, Firestore, or real device integrations.
+- Mobile UI, voice, fine-tuning, bonus models, or extra dashboards.
+- Blog/social bonus work before the core submission is complete.
+
+## Literal release states
+
+- **TEST-READY:** configuration, deterministic, and web integration gates pass locally.
+- **DEMO-READY:** every Wednesday gate plus three Thursday Cloud Run rehearsals pass.
+- **SUBMISSION-READY:** video, README, diagram, hosted revision, repository access, disclosures, and Devpost fields are verified.
+
+**Current state on August 25: working prototype; not yet TEST-READY, DEMO-READY, or SUBMISSION-READY.**
