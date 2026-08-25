@@ -87,9 +87,23 @@ def eval_poc_notification_cooldown() -> bool:
     return ok_first and ok_dup and ok_other
 
 
+def eval_end_to_end_diagnosis() -> bool:
+    """Full loop: queue_hang alerts -> diagnosis -> gate -> auto-fix."""
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("queue_hang")
+    summary = run_tick(sim, PolicyEngine.defaults(), Journal(":memory:"))
+    ok_rca = check("RCA identifies queue-hang root cause",
+                   "job_stuck" in summary["root_cause"])
+    kinds = [a["kind"] for a, _ in summary["executed"]]
+    ok_fix = check("restart_queue auto-executes", "restart_queue" in kinds)
+    ok_src = check("diagnosis source reported", summary["diagnosis_source"] in
+                   {"gemini", "heuristic"})
+    return ok_rca and ok_fix and ok_src
+
+
 SCENARIOS = [eval_queue_hang, eval_action_cap, eval_denylist,
              eval_human_gate, eval_firmware_drift, eval_supplies_orders,
-             eval_poc_notification_cooldown]
+             eval_poc_notification_cooldown, eval_end_to_end_diagnosis]
 
 
 def main() -> int:
