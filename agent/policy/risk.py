@@ -1,7 +1,7 @@
 """Deterministic risk engine. The LLM NEVER bypasses this layer."""
+import math
 from dataclasses import dataclass, field
 from enum import Enum
-import math
 
 
 class Risk(Enum):

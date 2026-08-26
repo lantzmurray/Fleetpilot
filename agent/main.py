@@ -90,7 +90,7 @@ def run_tick(sim: FleetSimulator, policy: PolicyEngine, journal: Journal) -> dic
     known = {d.device_id for d in sim.devices}
     diagnosis.proposed_actions = validated_actions(
         diagnosis.proposed_actions, known, journal,
-        enforce_device_limit=diagnosis.source == "gemini")
+        enforce_device_limit=diagnosis.source != "heuristic")
     confidence = min(max(diagnosis.confidence or 0.0, 0.0), 1.0)
     journal.log("diagnose", {
         "root_cause": diagnosis.root_cause,

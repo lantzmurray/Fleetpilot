@@ -20,13 +20,12 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_P
 ## Wednesday — test & deploy (no new features unless fixing a failed gate)
 
 - [x] G1: Config + clean-checkout reproducibility (fresh venv, README-only instructions, compile/lint/dependency/secret scans)
-- [x] G2: Deterministic suite — 11/11 harness offline + 24/24 pytest at 87% coverage
+- [x] G2: Deterministic suite — 11/11 harness offline + 31/31 pytest at 85.85% coverage
 - [x] G3: Web/API integration — full sequence deterministic across 5 runs (incl. stale-approval isolation, 4xx handling)
-- [ ] G4: Live Gemini stability — 3/3 queue + firmware diagnoses, source:gemini, warmed <15s, no hangs
-  - Root-caused Aug 25: AI Studio key is free tier = **20 requests/day/model** (quotaId GenerateRequestsPerDayPerProjectPerModel-FreeTier); today's testing exhausted it. JSON truncation from the 1024-token cap is fixed (8192).
-  - Path to pass: switch to Vertex backend (`GEMINI_BACKEND=vertex` + `GCP_PROJECT_ID`), which uses trial credits with real quotas. Blocked on `gcloud auth application-default login` — same user action as G5. Re-run: `PYTHONPATH=. .venv/bin/python scripts/gate4_live.py --gap 45`.
+- [x] G4: Live Gemini stability — 3/3 queue + 3/3 firmware diagnoses, `source:gemini`, 3.5–6.3s, no hangs or fallback (Aug 26)
+  - The 1024-token JSON truncation was fixed at 8192; the passing gate used `gemini-3.6-flash` through the API-key backend with 20-second spacing.
 - [ ] G5: Container + Cloud Run — local Docker test, push exact commit, deploy, verify .run.app URL + logs + health strip
-  - Partial: non-root local image and browser path pass; blocked on user running `gcloud auth login` + `gcloud auth application-default login` and enabling Cloud Run + Vertex AI APIs in the project.
+  - Partial: non-root local image and browser path pass; blocked on user running `gcloud auth login` and enabling the Cloud Run build/deploy services. Application-default login is needed only if the local gate switches to Vertex.
 
 ## Thursday — rehearse & record
 
@@ -47,4 +46,4 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_P
 ## Release states
 
 - TEST-READY: G1–G3 pass · DEMO-READY: G1–G5 + Thursday rehearsals · SUBMISSION-READY: S1–S2 verified
-- **Current: TEST-READY locally (G1–G3); not DEMO-READY until G4–G5 and Thursday rehearsals pass.**
+- **Current: TEST-READY locally (G1–G4); not DEMO-READY until G5 and Thursday rehearsals pass.**

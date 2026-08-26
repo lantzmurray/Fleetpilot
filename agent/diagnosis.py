@@ -6,6 +6,8 @@ Fallback path: deterministic topology correlation, used when no API key is
 configured (offline dev/tests) — and also sent to Gemini as grounding so the
 LLM verifies rather than hallucinates.
 """
+from __future__ import annotations
+
 import json
 import os
 import time

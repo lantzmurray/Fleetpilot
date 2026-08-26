@@ -83,6 +83,8 @@ gcloud run deploy fleetpilot \
   --set-env-vars GEMINI_MODEL="gemini-3.6-flash" \
   --allow-unauthenticated
 ```
+`--allow-unauthenticated` is for this synthetic, single-user contest sandbox;
+do not use this deployment shape for a real fleet or multi-user environment.
 
 ## Safety & evals
 The deterministic policy engine enforces: permanent denylist (destructive
@@ -92,12 +94,12 @@ expansion after a pilot. `python -m harness.run_evals` proves each guard
 fires; all tests run offline with model credentials disabled.
 
 ## Status
-**TEST-READY locally:** 11/11 offline eval scenarios and 24/24 pytest cases
-pass at 87% coverage; a fresh environment, five repeated API workflows, the
+**TEST-READY locally:** 11/11 offline eval scenarios and 31/31 pytest cases
+pass at 85.85% coverage; a fresh environment, five repeated API workflows, the
 real browser path, dependency audit, and non-root Docker image are verified.
-Gemini 3.6 produced the expected queue and 30-device firmware diagnoses under
-15 seconds, but the strict repeated live gate remains open after a rapid-call
-quota throttle. Cloud Run deployment is pending CLI authentication. See
+Gemini 3.6 passed the strict live gate with three queue and three 30-device
+firmware diagnoses at 3.5–6.3 seconds each, without fallback. Cloud Run
+deployment is pending CLI authentication. See
 [`CONTEST_PLAN.md`](CONTEST_PLAN.md) and [`docs/TASKS.md`](docs/TASKS.md) for
 the current execution plan.
 

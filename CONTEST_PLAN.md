@@ -1,6 +1,6 @@
 # FleetPilot Contest Execution Plan
 
-*Authoritative plan as of Tuesday, August 25, 2026 · Test day: Wednesday, August 26 · Demo-ready target: Thursday, August 27 · Submission deadline: Monday, August 31, 5:00 PM PT / 8:00 PM ET*
+*Authoritative plan as of Wednesday, August 26, 2026 · Test day: Wednesday, August 26 · Demo-ready target: Thursday, August 27 · Submission deadline: Monday, August 31, 5:00 PM PT / 8:00 PM ET*
 
 ## Contest position
 
@@ -36,7 +36,7 @@ The Taskmaster story is stronger:
 
 Official references: [contest overview](https://allthingsagentichackathon.devpost.com/) · [rules](https://allthingsagentichackathon.devpost.com/rules) · [unedited-video clarification](https://allthingsagentichackathon.devpost.com/forum_topics/44809-demo-video-is-speeding-up-the-whole-recording-allowed-under-unedited)
 
-## Actual progress through August 25
+## Actual progress through August 26
 
 ### Verified locally
 
@@ -46,12 +46,14 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 - Deterministic policy: allowlist, denylist, action cap, blast-radius gate, purchase cap, and notification cooldown.
 - Staged firmware rollout: five-device pilot, watchdog, abort, quarantine, and no automatic fleet-wide expansion.
 - Gemini timeout guard degrades to the heuristic path instead of hanging indefinitely.
-- Offline harness passes **11/11 scenarios**; pytest passes **24/24** at **87% coverage**.
+- Offline harness passes **11/11 scenarios**; pytest passes **31/31** at **85.85% coverage**.
 - A fresh virtual environment completes the README eval, CLI, and web quickstart.
 - The full API sequence passes five consecutive local runs with isolated run IDs.
 - The real browser path proves queue remediation plus the guarded 5-device abort.
 - `gemini-3.6-flash` is live-verified and pinned; warmed queue and firmware
   diagnoses completed under 15 seconds with the expected 30-device scope.
+- The strict live stability gate passes **6/6**: three queue and three firmware
+  diagnoses used Gemini at **3.5–6.3 seconds** each with no fallback.
 - The non-root Python 3.12 image passes health, both workflows, 4xx handling,
   and all 11 offline eval scenarios.
 
@@ -59,9 +61,6 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 
 - Cloud Run deployment is blocked on Google Cloud CLI authentication; a project
   ID is configured locally, but no active CLI or application-default identity exists.
-- The strict live stability gate is not yet 3/3 for both scenarios: rapid
-  repeated calls eventually returned `RESOURCE_EXHAUSTED`, which was visibly
-  labeled and safely degraded to the deterministic path.
 - The exact demo commit is not yet pushed, so hosted revision/commit proof is pending.
 
 ## Locked demo story
@@ -243,4 +242,4 @@ Do not narrate the repository layout, every policy rule, every scenario, or ever
 - **DEMO-READY:** every Wednesday gate plus three Thursday Cloud Run rehearsals pass.
 - **SUBMISSION-READY:** video, README, diagram, hosted revision, repository access, disclosures, and Devpost fields are verified.
 
-**Current state on August 25: working prototype; not yet TEST-READY, DEMO-READY, or SUBMISSION-READY.**
+**Current state on August 26: TEST-READY locally; not yet DEMO-READY or SUBMISSION-READY.**

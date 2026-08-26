@@ -325,6 +325,30 @@ def test_run_tick_rejects_an_oversized_model_device_list(
     assert rejected[-1]["payload"]["reason"] == "device list exceeds safe bound"
 
 
+def test_run_tick_rejects_an_oversized_glm_device_list(
+        monkeypatch, memory_journal):
+    sim = FleetSimulator.seed()
+    proposed = Diagnosis(
+        root_cause="unsafe broad rehearsal-model response",
+        confidence=0.8,
+        affected_nodes=[],
+        proposed_actions=[{
+            "kind": "restart_queue",
+            "devices": [d.device_id for d in sim.devices[:51]],
+            "rationale": "too broad for any model-selected action",
+        }],
+        source="glm",
+    )
+    monkeypatch.setattr("agent.main.diagnose", lambda _alerts: proposed)
+
+    summary = run_tick(sim, PolicyEngine.defaults(), memory_journal)
+
+    assert summary["executed"] == []
+    rejected = [e for e in memory_journal.replay()
+                if e["kind"] == "llm_output_rejected"]
+    assert rejected[-1]["payload"]["reason"] == "device list exceeds safe bound"
+
+
 def test_trusted_alert_storm_is_human_gated_not_silently_dropped(
         memory_journal):
     sim = FleetSimulator.seed()
@@ -361,7 +385,6 @@ def test_malformed_model_action_fields_are_rejected_without_exceptions(
 
 def test_glm_backend_parses_and_falls_back(monkeypatch):
     """LLM_BACKEND=glm: valid JSON is used, failures degrade to heuristic."""
-    from agent import diagnosis as dm
     import agent.diagnosis as d
 
     good = ('{"root_cause":"spooler hang on srv-east-1","confidence":0.9,'
