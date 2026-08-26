@@ -145,20 +145,39 @@ def _compact_context(alerts: list[dict], heuristic: Diagnosis) -> dict:
 
 def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
     """Ask Gemini to verify/refine the heuristic RCA. Returns the heuristic
-    result unchanged if no API key is configured."""
+    result unchanged if no credentials are configured.
+
+    Backends (GEMINI_BACKEND env): "vertex" uses Vertex AI inside the Google
+    Cloud project (real quotas, billed against credits — the demo path);
+    default uses an AI Studio API key (free tier, 20 req/day/model cap)."""
     global last_fallback_reason, last_model_used
     last_fallback_reason = None
     last_model_used = None
 
-    api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get(
-        "LLM_API_KEY")
-    if not api_key:
-        last_fallback_reason = "no_model_credentials"
+    backend = os.environ.get("GEMINI_BACKEND", "api-key").lower()
+    client = None
+    if backend == "vertex":
+        project = os.environ.get("GCP_PROJECT_ID") or os.environ.get(
+            "GOOGLE_CLOUD_PROJECT")
+        if project:
+            from google import genai  # lazy: offline paths never load the SDK
+            client = genai.Client(
+                vertexai=True, project=project,
+                location=os.environ.get("GCP_REGION", "us-central1"))
+        else:
+            last_fallback_reason = "vertex_selected_but_no_project"
+    else:
+        api_key = api_key or os.environ.get("GEMINI_API_KEY") or \
+            os.environ.get("LLM_API_KEY")
+        if api_key:
+            from google import genai
+            client = genai.Client(api_key=api_key)
+    if client is None:
+        if not last_fallback_reason:
+            last_fallback_reason = "no_model_credentials"
         return heuristic
 
-    from google import genai
     from google.genai import types  # lazy: offline paths never load the SDK
-    client = genai.Client(api_key=api_key)
     context = json.dumps(
         _compact_context(alerts, heuristic), separators=(",", ":"))
     prompt = (
