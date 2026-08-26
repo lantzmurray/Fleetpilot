@@ -312,11 +312,23 @@ def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
 
 def _parse(text: str):
     try:
+        if not text:
+            return None
+        text = text.strip()
+        # strip markdown fences some modes emit: ```json ... ```
+        if text.startswith("```"):
+            text = text.strip("`").lstrip("json").strip()
         data = json.loads(text)
-        # json_object mode sometimes double-wraps: {"answer": "{...}"}
-        if isinstance(data, dict) and "answer" in data and len(data) <= 2 \
-                and isinstance(data["answer"], str):
-            data = json.loads(data["answer"])
+        # json_object mode sometimes double-wraps the payload:
+        # {"answer": "{...}"} or {"answer": {...}}
+        if isinstance(data, dict) and "root_cause" not in data:
+            for v in data.values():
+                if isinstance(v, str) and v.strip().startswith("{"):
+                    data = json.loads(v)
+                    break
+                if isinstance(v, dict) and "root_cause" in v:
+                    data = v
+                    break
         return {
             "root_cause": data["root_cause"],
             "confidence": float(data.get("confidence", 0)),
