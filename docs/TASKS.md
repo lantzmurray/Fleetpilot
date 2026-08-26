@@ -23,9 +23,10 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_P
 - [x] G2: Deterministic suite — 11/11 harness offline + 24/24 pytest at 87% coverage
 - [x] G3: Web/API integration — full sequence deterministic across 5 runs (incl. stale-approval isolation, 4xx handling)
 - [ ] G4: Live Gemini stability — 3/3 queue + firmware diagnoses, source:gemini, warmed <15s, no hangs
-  - Partial: model and latency are verified; a rapid sixth call hit `RESOURCE_EXHAUSTED`, so the strict gate remains open.
+  - Root-caused Aug 25: AI Studio key is free tier = **20 requests/day/model** (quotaId GenerateRequestsPerDayPerProjectPerModel-FreeTier); today's testing exhausted it. JSON truncation from the 1024-token cap is fixed (8192).
+  - Path to pass: switch to Vertex backend (`GEMINI_BACKEND=vertex` + `GCP_PROJECT_ID`), which uses trial credits with real quotas. Blocked on `gcloud auth application-default login` — same user action as G5. Re-run: `PYTHONPATH=. .venv/bin/python scripts/gate4_live.py --gap 45`.
 - [ ] G5: Container + Cloud Run — local Docker test, push exact commit, deploy, verify .run.app URL + logs + health strip
-  - Partial: non-root local image and browser path pass; Cloud CLI authentication and hosted proof remain blocked.
+  - Partial: non-root local image and browser path pass; blocked on user running `gcloud auth login` + `gcloud auth application-default login` and enabling Cloud Run + Vertex AI APIs in the project.
 
 ## Thursday — rehearse & record
 
