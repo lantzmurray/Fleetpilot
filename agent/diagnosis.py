@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 GEMINI_TIMEOUT_S = 14  # per candidate; below the warmed-demo gate
+GLM_TIMEOUT_S = 30     # test backend; ~6s with thinking disabled, 35s+ without
 
 # Rules require Gemini 3.5 or newer; all verified available to our key Aug 25.
 # Resolved lazily per call — .env/load_dotenv may run after this module imports.
@@ -65,15 +66,17 @@ def _glm_diagnose(alerts, heuristic: Diagnosis) -> Diagnosis:
             headers={"Authorization": f"Bearer {api_key}"},
             json={"model": model, "temperature": 0,
                   "response_format": {"type": "json_object"},
+                  # thinking mode takes 35s+; disabled answers in ~6s
+                  "thinking": {"type": "disabled"},
                   "messages": [{"role": "user",
                                 "content": _build_prompt(alerts, heuristic)}]},
-            timeout=GEMINI_TIMEOUT_S)
+            timeout=GLM_TIMEOUT_S)
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"]
 
     try:
         pool = ThreadPoolExecutor(max_workers=1)
-        text = pool.submit(call).result(timeout=GEMINI_TIMEOUT_S + 1)
+        text = pool.submit(call).result(timeout=GLM_TIMEOUT_S + 1)
     except Exception as exc:  # noqa: BLE001
         last_fallback_reason = type(exc).__name__
         return heuristic
@@ -310,6 +313,10 @@ def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
 def _parse(text: str):
     try:
         data = json.loads(text)
+        # json_object mode sometimes double-wraps: {"answer": "{...}"}
+        if isinstance(data, dict) and "answer" in data and len(data) <= 2 \
+                and isinstance(data["answer"], str):
+            data = json.loads(data["answer"])
         return {
             "root_cause": data["root_cause"],
             "confidence": float(data.get("confidence", 0)),

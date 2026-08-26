@@ -12,6 +12,8 @@ def disable_model_credentials(monkeypatch):
     """Tests must never inherit a developer or CI model credential."""
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("GLM_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_BACKEND", raising=False)
 
 
 @pytest.fixture
