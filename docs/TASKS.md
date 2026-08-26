@@ -24,7 +24,10 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_P
 - [x] G3: Web/API integration — full sequence deterministic across 5 runs (incl. stale-approval isolation, 4xx handling)
 - [x] G4: Live Gemini stability — 3/3 queue + 3/3 firmware diagnoses, `source:gemini`, 3.5–6.3s, no hangs or fallback (Aug 26)
   - The 1024-token JSON truncation was fixed at 8192; the passing gate used `gemini-3.6-flash` through the API-key backend with 20-second spacing.
-- [ ] G5: Container + Cloud Run — local Docker test, push exact commit, deploy, verify .run.app URL + logs + health strip
+- [x] G5: Container + Cloud Run — PASSED Aug 26
+  - Service: https://fleetpilot-118750462659.us-central1.run.app · Revision fleetpilot-00001-mz4
+  - Commit 59116e2 pushed to github.com/lantzmurray/Fleetpilot · Model gemini-3.5-flash @ Vertex global · service-account auth (no API key shipped)
+  - Hosted verification: full 3-scene demo passed in 15.7s (queue hang cleared; firmware gated+approved; pilot aborted, 3 hung/quarantined, 25 untouched)
   - Partial: public GitHub `main`, non-root local image, and browser path pass; blocked on user running `gcloud auth login` and enabling the Cloud Run build/deploy services. Application-default login is needed only if the local gate switches to Vertex.
 
 ## Thursday — rehearse & record
@@ -46,4 +49,4 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_P
 ## Release states
 
 - TEST-READY: G1–G3 pass · DEMO-READY: G1–G5 + Thursday rehearsals · SUBMISSION-READY: S1–S2 verified
-- **Current: TEST-READY locally (G1–G4); not DEMO-READY until G5 and Thursday rehearsals pass.**
+- **Current: G1–G5 PASSED — DEMO-READY pending Thursday's 3× hosted one-take rehearsals.**
