@@ -15,7 +15,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
-GEMINI_TIMEOUT_S = 14  # per candidate; below the warmed-demo gate
+GEMINI_TIMEOUT_S = 45  # Vertex 3.5-flash with thinking lands 12-20s; demo absorbs it
 GLM_TIMEOUT_S = 30     # test backend; ~6s with thinking disabled, 35s+ without
 
 # Rules require Gemini 3.5 or newer; all verified available to our key Aug 25.
@@ -23,7 +23,7 @@ GLM_TIMEOUT_S = 30     # test backend; ~6s with thinking disabled, 35s+ without
 # Preview endpoints can spike with 503s under demand, so we use an eligible
 # primary plus verified failovers and record
 # which model actually answered (surfaced in the health strip).
-MODEL_CASCADE = ("gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.7-flash")
+MODEL_CASCADE = ("gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash")
 last_model_used: str | None = None
 last_fallback_reason: str | None = None
 

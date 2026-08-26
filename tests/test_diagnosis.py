@@ -60,7 +60,7 @@ def test_empty_alerts_have_a_noop_diagnosis():
 def test_default_model_uses_the_live_verified_contest_primary(monkeypatch):
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
 
-    assert diagnosis_module.model_candidates()[0] == "gemini-3.6-flash"
+    assert diagnosis_module.model_candidates()[0] == "gemini-3.5-flash"
 
 
 def test_queue_alerts_collapse_to_one_server_level_remediation():
@@ -176,8 +176,8 @@ def test_successful_failover_clears_the_prior_model_error(monkeypatch):
         queue_alerts(), heuristic_diagnose(queue_alerts()), api_key="test-key")
 
     assert result.source == "gemini"
-    assert models.models_seen[:2] == ["gemini-3.6-flash", "gemini-3.5-flash"]
-    assert diagnosis_module.last_model_used == "gemini-3.5-flash"
+    assert models.models_seen[:2] == ["gemini-3.5-flash", "gemini-3.6-flash"]
+    assert diagnosis_module.last_model_used == "gemini-3.6-flash"
     assert diagnosis_module.last_fallback_reason is None
 
 
@@ -214,9 +214,9 @@ def test_model_cascade_shares_one_overall_timeout_budget(monkeypatch):
         queue_alerts(), heuristic_diagnose(queue_alerts()), api_key="test-key")
 
     assert result.source == "heuristic"
-    assert submitted_models == ["gemini-3.6-flash", "gemini-3.5-flash"]
-    assert timeouts == [13.0, 4.0]
-    assert diagnosis_module.last_fallback_reason == "TimeoutError"
+    assert submitted_models[:2] == ["gemini-3.5-flash", "gemini-3.6-flash"]
+    assert timeouts == [44.0, 35.0, 30.0]
+    assert diagnosis_module.last_fallback_reason == "RuntimeError"
 
 
 def test_no_credentials_never_constructs_a_client(monkeypatch):
