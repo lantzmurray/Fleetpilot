@@ -6,24 +6,30 @@ Fallback path: deterministic topology correlation, used when no API key is
 configured (offline dev/tests) — and also sent to Gemini as grounding so the
 LLM verifies rather than hallucinates.
 """
+import json
 import os
+import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
-GEMINI_TIMEOUT_S = 45  # degrade to heuristic rather than hang the demo
+GEMINI_TIMEOUT_S = 14  # per candidate; below the warmed-demo gate
 
 # Rules require Gemini 3.5 or newer; all verified available to our key Aug 25.
 # Resolved lazily per call — .env/load_dotenv may run after this module imports.
-# Previews spike with 503s under demand, so we cascade newest-first and record
+# Preview endpoints can spike with 503s under demand, so we use an eligible
+# primary plus verified failovers and record
 # which model actually answered (surfaced in the health strip).
-MODEL_CASCADE = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash"]
+MODEL_CASCADE = ("gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.7-flash")
 last_model_used: str | None = None
+last_fallback_reason: str | None = None
 
 
 def model_candidates() -> list[str]:
     pinned = os.environ.get("GEMINI_MODEL")
-    return [pinned] if pinned else MODEL_CASCADE
+    return [pinned] if pinned else list(MODEL_CASCADE)
+
+
 SCHEMA = {
     "type": "object",
     "properties": {
@@ -79,11 +85,16 @@ def heuristic_diagnose(alerts: list[dict]) -> Diagnosis:
         return Diagnosis("no active alerts", 1.0, [], [], "heuristic")
     groups = defaultdict(list)
     for a in alerts:
-        groups[(a.get("server"), a.get("symptom"))].append(a)
+        symptom = a.get("symptom")
+        scope = "fleet" if symptom == "firmware_noncompliant" else a.get(
+            "server")
+        groups[(scope, symptom)].append(a)
     (server, symptom), members = max(
         groups.items(), key=lambda kv: len(kv[1]))
     queues = {a.get("queue") for a in members}
-    if len(queues) == 1:
+    if server == "fleet":
+        location = "enterprise fleet"
+    elif len(queues) == 1:
         location = f"queue {next(iter(queues))} on server {server}"
     else:
         location = f"server {server} ({len(queues)} queues affected)"
@@ -106,45 +117,84 @@ def heuristic_diagnose(alerts: list[dict]) -> Diagnosis:
         source="heuristic")
 
 
+def _compact_context(alerts: list[dict], heuristic: Diagnosis) -> dict:
+    """Keep the live request small while preserving grounded fleet scope."""
+    groups: dict[tuple, dict] = {}
+    for alert in alerts:
+        key = (alert.get("server"), alert.get("symptom"))
+        current = groups.get(key, {"devices": [], "queues": set()})
+        groups[key] = {
+            "devices": [*current["devices"], alert.get("device")],
+            "queues": {*current["queues"], alert.get("queue")},
+        }
+    return {
+        "alert_count": len(alerts),
+        "groups": [
+            {
+                "server": server,
+                "symptom": symptom,
+                "devices": values["devices"],
+                "queues": sorted(values["queues"]),
+            }
+            for (server, symptom), values in groups.items()
+        ],
+        "grounded_root_cause": heuristic.root_cause,
+        "grounded_confidence": heuristic.confidence,
+    }
+
+
 def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
     """Ask Gemini to verify/refine the heuristic RCA. Returns the heuristic
     result unchanged if no API key is configured."""
-    from google.genai import types  # imported lazily; SDK is optional at test time
+    global last_fallback_reason, last_model_used
+    last_fallback_reason = None
+    last_model_used = None
+
     api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get(
         "LLM_API_KEY")
     if not api_key:
+        last_fallback_reason = "no_model_credentials"
         return heuristic
 
     from google import genai
+    from google.genai import types  # lazy: offline paths never load the SDK
     client = genai.Client(api_key=api_key)
+    context = json.dumps(
+        _compact_context(alerts, heuristic), separators=(",", ":"))
     prompt = (
-        "You are an AIOps diagnosis agent for an enterprise printer fleet "
-        "(devices -> servers -> queues topology). Active alerts:\n"
-        f"{alerts[:200]}\n\n"
-        "A deterministic correlator proposes this root cause:\n"
-        f"{heuristic.root_cause} (confidence {heuristic.confidence})\n"
-        "Verify against the alerts. Confirm, refine, or split into multiple "
-        "root causes if the alerts clearly have more than one. Only propose "
-        "action kinds from this allowlist: restart_queue, clear_stuck_job, "
-        "ping_device, reroute_jobs, disable_queue, update_firmware, "
-        "order_supplies, notify_poc. Spend-averse: prefer the smallest "
-        "action that resolves the most alerts."
+        "Enterprise fleet AIOps. Verify the grounded diagnosis and return "
+        "the smallest relevant action. Only copy device IDs from the input. "
+        "Allowed actions: restart_queue, clear_stuck_job, ping_device, "
+        "reroute_jobs, disable_queue, update_firmware, order_supplies, "
+        f"notify_poc. Input:{context}"
     )
 
-    global last_model_used
-
     def call(model: str):
+        thinking_level = (
+            types.ThinkingLevel.LOW
+            if model.startswith("gemini-3.7")
+            else types.ThinkingLevel.MINIMAL
+        )
         return client.models.generate_content(
             model=model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=SCHEMA,
+                max_output_tokens=1024,
+                temperature=0,
+                thinking_config=types.ThinkingConfig(
+                    thinking_level=thinking_level),
             ),
         )
 
     response = None
+    deadline = time.monotonic() + GEMINI_TIMEOUT_S
     for model in model_candidates():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            last_fallback_reason = "TimeoutError"
+            break
         try:
             # hard timeout: SDK retries with backoff can stall minutes on
             # rate limits; the heuristic answer is always the fallback.
@@ -152,22 +202,32 @@ def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
             # on a hung call; we abandon the thread instead.
             pool = ThreadPoolExecutor(max_workers=1)
             response = pool.submit(call, model).result(
-                timeout=GEMINI_TIMEOUT_S)
+                timeout=remaining)
+            pool.shutdown(wait=False, cancel_futures=True)
             last_model_used = model
+            last_fallback_reason = None
             break
-        except Exception:
+        # The SDK exposes transport, quota, retry, timeout, and response
+        # exceptions from several dependency layers. Every one has the same
+        # safe outcome here: try the next eligible model, then use grounding.
+        except Exception as exc:  # noqa: BLE001
+            pool.shutdown(wait=False, cancel_futures=True)
+            status = getattr(exc, "status", None) or getattr(exc, "code", None)
+            last_fallback_reason = type(exc).__name__
+            if status:
+                last_fallback_reason += f":{status}"
             continue  # 503/timeouts on one model -> try the next
     if response is None:
         return heuristic
     result = _parse(response.text)
     if result is None:  # malformed despite schema — never trust blindly
+        last_fallback_reason = "malformed_model_response"
         return heuristic
     result["source"] = "gemini"
     return Diagnosis(**result)
 
 
 def _parse(text: str):
-    import json
     try:
         data = json.loads(text)
         return {

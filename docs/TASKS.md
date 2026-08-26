@@ -1,6 +1,6 @@
 # FleetPilot Task Tracker — All Things Agentic (submit by Sun Aug 30, hard stop Mon Aug 31 noon PT)
 
-Lane: **Taskmaster** (declared at submission, not before) · Plan: `../PLAN_All_Things_Agentic_2026-08-31.md`
+Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_PLAN.md`
 
 ## Tuesday — smooth & freeze the judge path
 
@@ -19,11 +19,13 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../PLAN_All_
 
 ## Wednesday — test & deploy (no new features unless fixing a failed gate)
 
-- [ ] G1: Config + clean-checkout reproducibility (fresh venv, README-only instructions, secret scan)
-- [ ] G2: Deterministic suite — 10/10 harness offline + pytest (correlation, policy, pilots, quarantine, Gemini mocks) ≥80% coverage
-- [ ] G3: Web/API integration — full sequence deterministic across 5 runs (incl. stale-approval isolation, 4xx handling)
+- [x] G1: Config + clean-checkout reproducibility (fresh venv, README-only instructions, compile/lint/dependency/secret scans)
+- [x] G2: Deterministic suite — 11/11 harness offline + 24/24 pytest at 87% coverage
+- [x] G3: Web/API integration — full sequence deterministic across 5 runs (incl. stale-approval isolation, 4xx handling)
 - [ ] G4: Live Gemini stability — 3/3 queue + firmware diagnoses, source:gemini, warmed <15s, no hangs
+  - Partial: model and latency are verified; a rapid sixth call hit `RESOURCE_EXHAUSTED`, so the strict gate remains open.
 - [ ] G5: Container + Cloud Run — local Docker test, push exact commit, deploy, verify .run.app URL + logs + health strip
+  - Partial: non-root local image and browser path pass; Cloud CLI authentication and hosted proof remain blocked.
 
 ## Thursday — rehearse & record
 
@@ -44,4 +46,4 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../PLAN_All_
 ## Release states
 
 - TEST-READY: G1–G3 pass · DEMO-READY: G1–G5 + Thursday rehearsals · SUBMISSION-READY: S1–S2 verified
-- **Current: working prototype, 10/10 evals @ `b65784b` — not yet TEST-READY**
+- **Current: TEST-READY locally (G1–G3); not DEMO-READY until G4–G5 and Thursday rehearsals pass.**

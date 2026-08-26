@@ -2,6 +2,7 @@
 multi-server print fleet (devices -> servers -> queues topology)."""
 import random
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 
 @dataclass
@@ -15,6 +16,13 @@ class Device:
 
 
 SERVERS = ["srv-east-1", "srv-east-2", "srv-west-1", "srv-west-2"]
+SUPPORTED_SCENARIOS = {
+    "queue_hang",
+    "alert_storm",
+    "firmware_drift",
+    "firmware_push_freezes",
+    "low_supplies",
+}
 
 
 @dataclass
@@ -37,6 +45,8 @@ class FleetSimulator:
 
     def inject_scenario(self, name: str) -> None:
         """Scripted scenarios for demo + evals."""
+        if name not in SUPPORTED_SCENARIOS:
+            raise ValueError(f"unknown scenario {name}")
         if name == "queue_hang":
             # One server's queue hangs -> 30 devices all report 'job stuck'
             affected = [d for d in self.devices if d.server == "srv-east-1"][:30]
@@ -93,13 +103,11 @@ class FleetSimulator:
                         "severity": "low", "paper_pct": d.paper_pct,
                         "disposition": "notify_poc",
                     })
-        else:
-            raise ValueError(f"unknown scenario {name}")
 
     def active_alerts(self) -> list[dict]:
         return self.alerts
 
-    RESOLVES = {
+    RESOLVES: ClassVar[dict[str, set[str]]] = {
         "restart_queue": {"job_stuck"},
         "clear_stuck_job": {"job_stuck"},
         "ping_device": {"offline"},

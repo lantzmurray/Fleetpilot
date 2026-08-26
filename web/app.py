@@ -8,15 +8,16 @@ Run isolation: each injected scenario starts a new run; the UI journal shows
 only the current run, while the append-only SQLite journal retains the full
 history as evidence.
 """
+import os
 import uuid
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import agent.diagnosis as dm
-from agent.fleet_sim import FleetSimulator
+from agent.fleet_sim import SUPPORTED_SCENARIOS, FleetSimulator
 from agent.journal import Journal
 from agent.main import run_tick
 from agent.policy.risk import PolicyEngine
@@ -51,6 +52,8 @@ class AppState:
         self.pending: dict[str, dict] = {}   # approval_id -> {action, reason}
         self.last_summary: dict = {}
         self.rollout_report: dict | None = None
+        self.last_model_used: str | None = None
+        self.fallback_reason: str | None = None
 
     def new_run(self) -> str:
         self.sim = FleetSimulator.seed()
@@ -60,10 +63,20 @@ class AppState:
         self.pending = {}
         self.last_summary = {}
         self.rollout_report = None
+        self.last_model_used = None
+        self.fallback_reason = None
         return self.run_id
 
 
 state = AppState()
+
+
+def deployment_details() -> dict:
+    return {
+        "deployment": "Cloud Run" if os.environ.get("K_SERVICE") else "local",
+        "service": os.environ.get("K_SERVICE", "fleetpilot"),
+        "revision": os.environ.get("K_REVISION"),
+    }
 
 
 @app.get("/")
@@ -71,12 +84,28 @@ def index():
     return FileResponse("web/static/index.html")
 
 
+@app.get("/health")
+def health():
+    """Runtime probe used by Cloud Run and the demo preflight."""
+    return {
+        "status": "ok",
+        "model": dm.model_candidates()[0],
+        "diagnosis_source": state.last_summary.get("diagnosis_source"),
+        "fallback_reason": state.fallback_reason,
+        **deployment_details(),
+    }
+
+
 @app.post("/api/scenario/{name}")
 def inject(name: str):
+    if name not in SUPPORTED_SCENARIOS:
+        raise HTTPException(status_code=400, detail=f"unknown scenario {name}")
     run_id = state.new_run()
     state.run_journal.log("run_started", {"run": run_id})
     state.sim.inject_scenario(name)
     state.last_summary = run_tick(state.sim, state.policy, state.run_journal)
+    state.last_model_used = dm.last_model_used
+    state.fallback_reason = dm.last_fallback_reason
     for entry in state.last_summary.get("escalated", []):
         approval_id = str(uuid.uuid4())[:8]
         state.pending[approval_id] = entry  # {action, reason}
@@ -88,7 +117,7 @@ def inject(name: str):
 @app.post("/api/approve/{approval_id}")
 def approve(approval_id: str):
     if approval_id not in state.pending:
-        return {"error": "unknown approval id"}
+        raise HTTPException(status_code=404, detail="unknown approval id")
     entry = state.pending.pop(approval_id)
     state.run_journal.log("human_decision",
                           {"action": entry["action"], "decision": "APPROVED"})
@@ -119,7 +148,7 @@ def approve(approval_id: str):
 @app.post("/api/reject/{approval_id}")
 def reject(approval_id: str):
     if approval_id not in state.pending:
-        return {"error": "unknown approval id"}
+        raise HTTPException(status_code=404, detail="unknown approval id")
     entry = state.pending.pop(approval_id)
     state.run_journal.log("human_decision",
                           {"action": entry["action"], "decision": "REJECTED"})
@@ -144,11 +173,13 @@ def snapshot() -> dict:
         ],
         "rollout_report": state.rollout_report,
         "health": {
-            "model": dm.last_model_used or dm.model_candidates()[0],
+            "model": state.last_model_used or dm.model_candidates()[0],
             "model_candidates": dm.model_candidates(),
+            **deployment_details(),
             "diagnosis_source": state.last_summary.get("diagnosis_source"),
             "fallback_active": state.last_summary.get("diagnosis_source")
                                == "heuristic",
+            "fallback_reason": state.fallback_reason,
         },
         "journal": (state.run_journal.events if state.run_journal else [])[-50:],
     }

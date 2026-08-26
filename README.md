@@ -29,10 +29,10 @@ page humans but don't diagnose. Full autonomy isn't trusted — yet.
   approval, and watchdog event lands in an append-only, replayable journal.
 
 ## Stack
-- **Gemini 3.5+** — model cascade `gemini-3.5-flash` → `gemini-3.6-flash` →
-  `gemini-3.7-flash` (newest wins; the model actually used is shown in the
-  dashboard health strip), via the **Google GenAI SDK**
-- **FastAPI** dashboard, deployed on **Google Cloud Run**
+- **Gemini 3.5+** — `gemini-3.6-flash` is the live-verified contest primary,
+  with 3.5/3.7 failover; the model that actually answers is shown in the
+  dashboard health strip, via the **Google GenAI SDK**
+- **FastAPI** dashboard, container-verified for **Google Cloud Run**
 - SQLite journal (append-only evidence store)
 
 ## Layout
@@ -47,9 +47,12 @@ journal/  Append-only audit log (SQLite)
 docs/     Task tracker + submission assets
 ```
 
+See the [architecture diagram](docs/architecture.md) for the deployment flow and
+the trust boundary between Gemini proposals and deterministic execution.
+
 ## Quickstart
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -r requirements.txt
 cp .env.example .env   # add your Gemini API key
 # Eval suite (offline, no API key needed) — 11/11:
 .venv/bin/python -m harness.run_evals
@@ -77,7 +80,7 @@ gcloud run deploy fleetpilot \
   --source . \
   --region us-central1 \
   --set-secrets GEMINI_API_KEY=fleetpilot-gemini-api-key:latest \
-  --set-env-vars GEMINI_MODEL="gemini-3.5-flash" \
+  --set-env-vars GEMINI_MODEL="gemini-3.6-flash" \
   --allow-unauthenticated
 ```
 
@@ -89,11 +92,14 @@ expansion after a pilot. `python -m harness.run_evals` proves each guard
 fires; all tests run offline with model credentials disabled.
 
 ## Status
-Working prototype: 11/11 offline eval scenarios pass; the local dashboard and
-live Gemini diagnosis are exercised. Cloud Run deployment, full web/API test
-coverage, and the contest demo gate are still pending. See
-[`../PLAN_All_Things_Agentic_2026-08-31.md`](../PLAN_All_Things_Agentic_2026-08-31.md)
-and [`docs/TASKS.md`](docs/TASKS.md) for the current execution plan.
+**TEST-READY locally:** 11/11 offline eval scenarios and 24/24 pytest cases
+pass at 87% coverage; a fresh environment, five repeated API workflows, the
+real browser path, dependency audit, and non-root Docker image are verified.
+Gemini 3.6 produced the expected queue and 30-device firmware diagnoses under
+15 seconds, but the strict repeated live gate remains open after a rapid-call
+quota throttle. Cloud Run deployment is pending CLI authentication. See
+[`CONTEST_PLAN.md`](CONTEST_PLAN.md) and [`docs/TASKS.md`](docs/TASKS.md) for
+the current execution plan.
 
 ## Disclosure
 Fleet data is synthetic — a sandboxed fleet modeled on real multi-server,

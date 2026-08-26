@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 .venv/
 node_modules/
+.coverage
+.pytest_cache/
+.playwright-cli/
+output/

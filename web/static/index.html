@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>FleetPilot — Audited AIOps for Device Fleets</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <style>
   :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3;
           --dim:#8b949e; --green:#3fb950; --amber:#d29922; --red:#f85149;
@@ -74,14 +75,19 @@
 </div>
 
 <div class="controls">
-  <span style="color:var(--dim); align-self:center; font-size:12px">inject scenario →</span>
+  <span style="color:var(--dim); align-self:center; font-size:12px">live demo →</span>
   <button class="run" onclick="run('queue_hang')">Queue hang (30 alerts)</button>
-  <button class="run" onclick="run('alert_storm')">Alert storm (150 offline)</button>
-  <button class="run" onclick="run('firmware_drift')">Firmware drift</button>
-  <button class="run" onclick="run('firmware_push_freezes')">Firmware drift (pushes freeze)</button>
-  <button class="run" onclick="run('low_supplies')">Low supplies</button>
-  <button onclick="reset()">Reset fleet</button>
+  <button onclick="reset()">New run</button>
+  <button class="run" onclick="run('firmware_push_freezes')">Guarded firmware rollout</button>
 </div>
+<details style="margin-top:8px; color:var(--dim)">
+  <summary style="cursor:pointer; font-size:12px">Additional test scenarios</summary>
+  <div class="controls" style="margin-top:8px">
+    <button class="run" onclick="run('alert_storm')">Alert storm</button>
+    <button class="run" onclick="run('firmware_drift')">Clean firmware pilot</button>
+    <button class="run" onclick="run('low_supplies')">Low supplies</button>
+  </div>
+</details>
 
 <div class="grid">
   <div>
@@ -122,8 +128,11 @@ function render(s) {
   const src = h.diagnosis_source;
   $('health').innerHTML =
     `<span>model: <b>${esc(h.model)}</b></span>` +
+    `<span>deployment: <b>${esc(h.deployment||'local')}</b></span>` +
     (src ? `<span>diagnosis: <b class="${src==='gemini'?'live':'fallback'}">${
       src==='gemini' ? 'Gemini (live)' : 'deterministic fallback'}</b></span>` : '') +
+    (h.fallback_reason ? `<span>fallback: <b class="fallback">${
+      esc(h.fallback_reason)}</b></span>` : '') +
     `<span>fleet: synthetic sandbox</span>`;
 
   const sum = s.last_summary || {};
@@ -144,10 +153,11 @@ function render(s) {
         `<div class="approval"><h3>APPROVAL REQUIRED</h3>
          <b>${esc(p.action.kind)}</b> — ${esc(p.action.rationale||'')}<br>
          blast radius: ${(p.action.devices||[]).length} devices
-         ${p.action.cost_usd ? ` · cost: $${p.action.cost_usd}` : ''}<br>
+         ${p.action.cost_usd ? ` · cost: $${esc(p.action.cost_usd)}` : ''}<br>
          <span style="color:var(--dim)">gated because: ${esc(p.reason||'')}</span>
          <div style="margin-top:8px">
-           <button class="approve" onclick="decide('${p.id}','approve')">Approve</button>
+           <button class="approve" onclick="decide('${p.id}','approve')">${
+             p.action.kind==='update_firmware' ? 'Approve 5-device pilot' : 'Approve'}</button>
            <button class="reject" onclick="decide('${p.id}','reject')">Reject</button>
          </div></div>`).join('')
     : '<span class="empty">nothing awaiting approval</span>';
@@ -207,22 +217,27 @@ async function guard(fn){
 async function run(name){
   await guard(async () => {
     const r = await fetch('/api/scenario/'+name, {method:'POST'});
-    render(await r.json());
+    render(await responseJson(r));
   });
 }
 async function decide(id, act){
   await guard(async () => {
     const r = await fetch(`/api/${act}/${id}`, {method:'POST'});
-    render(await r.json());
+    render(await responseJson(r));
   });
 }
 async function reset(){
   await guard(async () => {
     const r = await fetch('/api/reset', {method:'POST'});
-    render(await r.json());
+    render(await responseJson(r));
   });
 }
-fetch('/api/state').then(r=>r.json()).then(render);
+async function responseJson(r){
+  const body = await r.json();
+  if (!r.ok) throw new Error(body.detail || `request failed (${r.status})`);
+  return body;
+}
+fetch('/api/state').then(responseJson).then(render).catch(console.error);
 </script>
 </body>
 </html>

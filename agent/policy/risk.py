@@ -1,6 +1,7 @@
 """Deterministic risk engine. The LLM NEVER bypasses this layer."""
 from dataclasses import dataclass, field
 from enum import Enum
+import math
 
 
 class Risk(Enum):
@@ -67,7 +68,12 @@ class PolicyEngine:
             return Decision(Risk.AUTO, "POC notified (first contact in window)")
 
         if kind == "order_supplies":
-            cost = float(action.get("cost_usd", 0))
+            try:
+                cost = float(action.get("cost_usd", 0))
+            except (TypeError, ValueError):
+                return Decision(Risk.BLOCKED, "invalid supply-order cost")
+            if not math.isfinite(cost) or cost < 0:
+                return Decision(Risk.BLOCKED, "invalid supply-order cost")
             if cost > ORDER_AUTO_MAX_USD:
                 return Decision(
                     Risk.HUMAN,

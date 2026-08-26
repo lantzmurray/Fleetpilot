@@ -46,21 +46,23 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 - Deterministic policy: allowlist, denylist, action cap, blast-radius gate, purchase cap, and notification cooldown.
 - Staged firmware rollout: five-device pilot, watchdog, abort, quarantine, and no automatic fleet-wide expansion.
 - Gemini timeout guard degrades to the heuristic path instead of hanging indefinitely.
-- Existing harness passes **10/10 scenarios** (18 visible assertions) on August 25.
-- Live CLI run returned `diagnosis_source: gemini` and cleared the 30-alert queue-hang scenario.
-- Local web smoke check returned HTTP 200 for state, reset, and scenario endpoints.
-- Dockerfile exists for Cloud Run packaging.
-- Git working tree was clean at `b65784b` before this plan/README update.
+- Offline harness passes **11/11 scenarios**; pytest passes **24/24** at **87% coverage**.
+- A fresh virtual environment completes the README eval, CLI, and web quickstart.
+- The full API sequence passes five consecutive local runs with isolated run IDs.
+- The real browser path proves queue remediation plus the guarded 5-device abort.
+- `gemini-3.6-flash` is live-verified and pinned; warmed queue and firmware
+  diagnoses completed under 15 seconds with the expected 30-device scope.
+- The non-root Python 3.12 image passes health, both workflows, 4xx handling,
+  and all 11 offline eval scenarios.
 
 ### Not yet proven
 
-- Cloud Run deployment is unverified; no service/project evidence was visible from the current local configuration.
-- The default model is `gemini-3-flash-preview`, while the rules require Gemini 3.5 or newer. The exact available/eligible model ID must be confirmed and pinned before deployment. Do not infer compliance from the name.
-- The firmware result is recorded in the backend journal but is not explained clearly in the UI. Several rollout events render as names with blank summaries.
-- Gemini can vary the proposed device list, so the frozen-pilot outcome is not yet deterministic enough for a one-take demo.
-- Reset can retain prior SQLite journal entries, which can pollute rehearsals.
-- The custom harness is useful evidence but is not yet a conventional unit/integration/E2E suite with measured coverage.
-- README/repository setup still needs clean-checkout verification, a license decision, and the final architecture asset.
+- Cloud Run deployment is blocked on Google Cloud CLI authentication; a project
+  ID is configured locally, but no active CLI or application-default identity exists.
+- The strict live stability gate is not yet 3/3 for both scenarios: rapid
+  repeated calls eventually returned `RESOURCE_EXHAUSTED`, which was visibly
+  labeled and safely degraded to the deterministic path.
+- The exact demo commit is not yet pushed, so hosted revision/commit proof is pending.
 
 ## Locked demo story
 
