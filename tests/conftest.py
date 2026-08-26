@@ -14,6 +14,9 @@ def disable_model_credentials(monkeypatch):
     monkeypatch.delenv("LLM_API_KEY", raising=False)
     monkeypatch.delenv("GLM_API_KEY", raising=False)
     monkeypatch.delenv("LLM_BACKEND", raising=False)
+    monkeypatch.delenv("GEMINI_BACKEND", raising=False)
+    monkeypatch.delenv("GCP_PROJECT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
 
 
 @pytest.fixture

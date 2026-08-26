@@ -37,8 +37,8 @@ class FakeModels:
 def install_fake_client(monkeypatch, models: FakeModels):
     clients = []
 
-    def factory(*, api_key):
-        clients.append(api_key)
+    def factory(*args, **kwargs):
+        clients.append(kwargs.get("api_key", "vertex-or-other-backend"))
         return SimpleNamespace(models=models)
 
     monkeypatch.setattr(genai, "Client", factory)
