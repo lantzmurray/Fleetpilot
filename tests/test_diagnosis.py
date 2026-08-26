@@ -131,7 +131,8 @@ def test_gemini_request_is_compact_and_uses_demo_latency_controls(monkeypatch):
     assert len(contents) < 3500
     assert '"alert_count":30' in contents
     assert "'severity':" not in contents
-    assert config.max_output_tokens == 1024
+    # generous cap: thinking tokens count against it; 1024 truncated JSON
+    assert config.max_output_tokens >= 4096
     assert config.thinking_config.thinking_level is types.ThinkingLevel.MINIMAL
 
 

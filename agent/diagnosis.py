@@ -181,7 +181,10 @@ def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=SCHEMA,
-                max_output_tokens=1024,
+                # thinking tokens count against this cap on 3.5-flash;
+                # 1024 truncated the JSON (MAX_TOKENS) and silently degraded
+                # to the heuristic — keep it generous, output stays small
+                max_output_tokens=8192,
                 temperature=0,
                 thinking_config=types.ThinkingConfig(
                     thinking_level=thinking_level),
