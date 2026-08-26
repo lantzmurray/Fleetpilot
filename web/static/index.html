@@ -129,8 +129,8 @@ function render(s) {
   $('health').innerHTML =
     `<span>model: <b>${esc(h.model)}</b></span>` +
     `<span>deployment: <b>${esc(h.deployment||'local')}</b></span>` +
-    (src ? `<span>diagnosis: <b class="${src==='gemini'?'live':'fallback'}">${
-      src==='gemini' ? 'Gemini (live)' : 'deterministic fallback'}</b></span>` : '') +
+    (src ? `<span>diagnosis: <b class="${src==='heuristic'?'fallback':'live'}">${
+      src==='heuristic' ? 'deterministic fallback' : src+' (live)'}</b></span>` : '') +
     (h.fallback_reason ? `<span>fallback: <b class="fallback">${
       esc(h.fallback_reason)}</b></span>` : '') +
     `<span>fleet: synthetic sandbox</span>`;

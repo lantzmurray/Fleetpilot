@@ -357,3 +357,35 @@ def test_malformed_model_action_fields_are_rejected_without_exceptions(
         "invalid cost_usd",
         "invalid rationale",
     ]
+
+
+def test_glm_backend_parses_and_falls_back(monkeypatch):
+    """LLM_BACKEND=glm: valid JSON is used, failures degrade to heuristic."""
+    from agent import diagnosis as dm
+    import agent.diagnosis as d
+
+    good = ('{"root_cause":"spooler hang on srv-east-1","confidence":0.9,'
+            '"affected_nodes":[],"proposed_actions":[{"kind":"restart_queue",'
+            '"devices":["DEV-0001"],"rationale":"clear spooler"}]}')
+
+    class FakeResp:
+        def raise_for_status(self): pass
+        def json(self): return {"choices": [{"message": {"content": good}}]}
+
+    monkeypatch.setenv("LLM_BACKEND", "glm")
+    monkeypatch.setenv("GLM_API_KEY", "test-key")
+    monkeypatch.setattr(d, "_compact_context",
+                        lambda a, h: {"alerts": a})
+    import httpx
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: FakeResp())
+    alerts = [{"device": "DEV-0001", "server": "srv-east-1",
+               "queue": "Q-01", "symptom": "job_stuck",
+               "severity": "high"}]
+    out = d.diagnose(alerts)
+    assert out.source == "glm" and d.last_model_used == "glm-5.2"
+
+    def boom(*a, **k): raise RuntimeError("connection refused")
+    monkeypatch.setattr(httpx, "post", boom)
+    out2 = d.diagnose(alerts)
+    assert out2.source == "heuristic"
+    assert d.last_fallback_reason == "RuntimeError"

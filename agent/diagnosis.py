@@ -30,6 +30,61 @@ def model_candidates() -> list[str]:
     return [pinned] if pinned else list(MODEL_CASCADE)
 
 
+def _build_prompt(alerts, heuristic: Diagnosis) -> str:
+    context = json.dumps(
+        _compact_context(alerts, heuristic), separators=(",", ":"))
+    return (
+        "Enterprise fleet AIOps. Verify the grounded diagnosis and return "
+        "the smallest relevant action. Only copy device IDs from the input. "
+        "Allowed actions: restart_queue, clear_stuck_job, ping_device, "
+        "reroute_jobs, disable_queue, update_firmware, order_supplies, "
+        f"notify_poc. Return ONLY a JSON object with keys root_cause, "
+        f"confidence (0-1), affected_nodes, proposed_actions (each with "
+        f"kind, devices, rationale). Input:{context}"
+    )
+
+
+def _glm_diagnose(alerts, heuristic: Diagnosis) -> Diagnosis:
+    """OpenAI-compatible test backend (e.g., GLM). Same contract as the
+    Gemini path: JSON in, validated diagnosis out; deterministic fallback
+    on any failure. NOT contest-eligible — used to rehearse at full cadence
+    without burning Gemini quota. Flip LLM_BACKEND back for the real demo."""
+    global last_fallback_reason, last_model_used
+    api_key = os.environ.get("GLM_API_KEY")
+    if not api_key:
+        last_fallback_reason = "no_glm_credentials"
+        return heuristic
+    import httpx  # lazy: offline paths never load it
+
+    model = os.environ.get("GLM_MODEL", "glm-5.2")
+    base = os.environ.get("GLM_BASE_URL", "https://api.z.ai/api/paas/v4")
+
+    def call():
+        r = httpx.post(
+            f"{base.rstrip('/')}/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"model": model, "temperature": 0,
+                  "response_format": {"type": "json_object"},
+                  "messages": [{"role": "user",
+                                "content": _build_prompt(alerts, heuristic)}]},
+            timeout=GEMINI_TIMEOUT_S)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+
+    try:
+        pool = ThreadPoolExecutor(max_workers=1)
+        text = pool.submit(call).result(timeout=GEMINI_TIMEOUT_S + 1)
+    except Exception as exc:  # noqa: BLE001
+        last_fallback_reason = type(exc).__name__
+        return heuristic
+    result = _parse(text)
+    if result is None:
+        last_fallback_reason = "malformed_model_response"
+        return heuristic
+    last_model_used = model
+    return Diagnosis(source="glm", **result)
+
+
 SCHEMA = {
     "type": "object",
     "properties": {
@@ -73,7 +128,7 @@ class Diagnosis:
     confidence: float
     affected_nodes: list
     proposed_actions: list
-    source: str  # "gemini" | "heuristic"
+    source: str  # "gemini" | "glm" (test backend) | "heuristic"
 
 
 def heuristic_diagnose(alerts: list[dict]) -> Diagnosis:
@@ -153,6 +208,9 @@ def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:
     global last_fallback_reason, last_model_used
     last_fallback_reason = None
     last_model_used = None
+
+    if os.environ.get("LLM_BACKEND", "").lower() == "glm":
+        return _glm_diagnose(alerts, heuristic)
 
     backend = os.environ.get("GEMINI_BACKEND", "api-key").lower()
     client = None
