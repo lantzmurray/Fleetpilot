@@ -25,7 +25,7 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_P
 - [x] G4: Live Gemini stability — 3/3 queue + 3/3 firmware diagnoses, `source:gemini`, 3.5–6.3s, no hangs or fallback (Aug 26)
   - The 1024-token JSON truncation was fixed at 8192; the passing gate used `gemini-3.6-flash` through the API-key backend with 20-second spacing.
 - [ ] G5: Container + Cloud Run — local Docker test, push exact commit, deploy, verify .run.app URL + logs + health strip
-  - Partial: non-root local image and browser path pass; blocked on user running `gcloud auth login` and enabling the Cloud Run build/deploy services. Application-default login is needed only if the local gate switches to Vertex.
+  - Partial: public GitHub `main`, non-root local image, and browser path pass; blocked on user running `gcloud auth login` and enabling the Cloud Run build/deploy services. Application-default login is needed only if the local gate switches to Vertex.
 
 ## Thursday — rehearse & record
 

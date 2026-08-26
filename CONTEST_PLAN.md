@@ -61,7 +61,8 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 
 - Cloud Run deployment is blocked on Google Cloud CLI authentication; a project
   ID is configured locally, but no active CLI or application-default identity exists.
-- The exact demo commit is not yet pushed, so hosted revision/commit proof is pending.
+- The public GitHub `main` branch is pushed; hosted Cloud Run revision-to-commit
+  proof remains pending until deployment.
 
 ## Locked demo story
 
