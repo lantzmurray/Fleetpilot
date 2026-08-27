@@ -1,6 +1,7 @@
 # FleetPilot Task Tracker — All Things Agentic (submit by Sun Aug 30, hard stop Mon Aug 31 noon PT)
 
-Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_PLAN.md`
+Product story: **enterprise printer-fleet AIOps**. Contest category is a
+submission choice, not a product claim. Plan: `../CONTEST_PLAN.md`
 
 ## Tuesday — smooth & freeze the judge path
 
@@ -28,7 +29,7 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_P
   - Service: https://fleetpilot-118750462659.us-central1.run.app · Revision fleetpilot-00001-mz4
   - Commit 59116e2 pushed to github.com/lantzmurray/Fleetpilot · Model gemini-3.5-flash @ Vertex global · service-account auth (no API key shipped)
   - Hosted verification: full 3-scene demo passed in 15.7s (queue hang cleared; firmware gated+approved; pilot aborted, 3 hung/quarantined, 25 untouched)
-  - Partial: public GitHub `main`, non-root local image, and browser path pass; blocked on user running `gcloud auth login` and enabling the Cloud Run build/deploy services. Application-default login is needed only if the local gate switches to Vertex.
+- [x] G6: Realistic synthetic evidence — 30 jobs / 22 queues with owner and account; 200 printer records with serial/IP/MAC/site/contact; current→target firmware; reachability and last-poll state; browser QA passes both locked paths with zero console errors (Aug 27)
 
 ## Thursday — rehearse & record
 
@@ -42,7 +43,7 @@ Lane: **Taskmaster** (declared at submission, not before) · Plan: `../CONTEST_P
 
 ## Saturday — write & submit
 
-- [ ] S1: Devpost write-up (Taskmaster framing), video upload, clean-browser verification, disclosures
+- [ ] S1: Devpost write-up (enterprise-fleet framing), final category selection, video upload, clean-browser verification, disclosures
 - [ ] S2: Submit Saturday evening; save receipt
 - [ ] S3 (bonus, only if core done): blog post + #AllThingsAgenticHackathon social
 

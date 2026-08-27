@@ -1,29 +1,21 @@
 # FleetPilot Contest Execution Plan
 
-*Authoritative plan as of Wednesday, August 26, 2026 · Test day: Wednesday, August 26 · Demo-ready target: Thursday, August 27 · Submission deadline: Monday, August 31, 5:00 PM PT / 8:00 PM ET*
+*Authoritative plan as of Thursday, August 27, 2026 · Demo-ready target: Thursday, August 27 · Submission deadline: Monday, August 31, 5:00 PM PT / 8:00 PM ET*
 
 ## Contest position
 
-**Product/domain: Enterprise device-fleet operations**  
-**Contest category: Taskmaster**  
+**Product/domain: Enterprise printer-fleet operations**
+
+**Contest category: select separately at submission; do not make it a product claim**
+
 **Also eligible for:** Individual/Hobbyist and Best Architectural Design  
 **One-sentence pitch:** FleetPilot turns a device-fleet alert storm into one topology-aware diagnosis, safely completes low-risk remediation, and stops risky firmware rollouts before they become fleet-wide outages.
 
-FleetPilot remains an enterprise-fleet product; choosing Taskmaster does not turn
-it into a personal task queue or change its enterprise operations story.
-Taskmaster is the honest **submission category** for the code that exists:
-one agentic workflow with separate diagnosis, deterministic policy, tools,
-state, and audit components. Devpost's category named Fortified Enterprise
-Fleet has a narrower meaning: a scalable network of institutional agents,
-delegation to specialized sub-agents, registry/runtime/memory/identity/gateway
-controls, and long-running enterprise context. Adding cosmetic sub-agents
-before Thursday would weaken the entry.
-
-The Taskmaster story is stronger:
+The entry should make three narrow claims:
 
 - **Enterprise fleet friction:** one infrastructure failure produces dozens of device alerts, and firmware pushes can freeze halfway through a fleet.
-- **Autonomous completion:** FleetPilot correlates a 30-alert queue incident, selects an allowlisted fix, executes it, and verifies that alerts clear.
-- **Safety twist:** the same agent cannot push high-impact firmware changes without approval; an approved rollout starts with a pilot and aborts on hangs.
+- **Evidence-led completion:** FleetPilot correlates 30 jobs across 22 queues to one shared print-server incident, isolates a suspect job, executes the allowlisted remediation, and verifies that alerts clear.
+- **Governed change orchestration:** existing vendor firmware/settings capabilities are inputs, not competitors; FleetPilot adds approval, pilot scope, watchdog evidence, quarantine, and abort behavior when automation stalls.
 
 ## Verified contest constraints
 
@@ -46,7 +38,7 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 - Deterministic policy: allowlist, denylist, action cap, blast-radius gate, purchase cap, and notification cooldown.
 - Staged firmware rollout: five-device pilot, watchdog, abort, quarantine, and no automatic fleet-wide expansion.
 - Gemini timeout guard degrades to the heuristic path instead of hanging indefinitely.
-- Offline harness passes **11/11 scenarios**; pytest passes **31/31** at **85.85% coverage**.
+- Offline harness passes **11/11 scenarios**; pytest passes **37/37** at **87.21% coverage**.
 - A fresh virtual environment completes the README eval, CLI, and web quickstart.
 - The full API sequence passes five consecutive local runs with isolated run IDs.
 - The real browser path proves queue remediation plus the guarded 5-device abort.
@@ -57,18 +49,18 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 - The non-root Python 3.12 image passes health, both workflows, 4xx handling,
   and all 11 offline eval scenarios.
 
-### Not yet proven
+### Hosted proof
 
-- Cloud Run deployment is blocked on Google Cloud CLI authentication; a project
-  ID is configured locally, but no active CLI or application-default identity exists.
-- The public GitHub `main` branch is pushed; hosted Cloud Run revision-to-commit
-  proof remains pending until deployment.
+- Cloud Run deployment passed on August 26; the public service completed the
+  prior three-scene workflow in 15.7 seconds on Vertex AI.
+- The realistic job/device evidence update is locally verified and must be
+  redeployed and rehearsed before recording.
 
 ## Locked demo story
 
 The judged demo uses exactly two scenarios:
 
-1. **Queue hang:** 30 synthetic alerts collapse into one Gemini RCA; policy permits a low-risk queue remediation; FleetPilot executes it and verifies zero alerts remain. This proves the Taskmaster requirement: a complete workflow with autonomous action, not a chatbot.
+1. **Queue hang:** 30 synthetic jobs across 22 queues collapse into one Gemini RCA; one suspect job retains owner/account evidence; policy permits a low-risk remediation; FleetPilot quarantines it, releases the 29-job backlog, and verifies zero alerts remain. This proves a complete operational workflow, not a chatbot.
 2. **Guarded firmware rollout:** 30 compliance alerts produce a firmware proposal; policy requires approval; approval starts only a five-device pilot; the watchdog catches frozen pushes, quarantines affected devices, aborts expansion, and leaves the rest of the fleet untouched. This proves failure tolerance and governed autonomy.
 
 Supplies and alert storm remain test/README evidence. Do not tour them in the video.
@@ -79,7 +71,7 @@ Supplies and alert storm remain test/README evidence. Do not tour them in the vi
 
 **Goal:** make both outcomes obvious without lengthy narration.
 
-- Lock the Devpost category to **Taskmaster** in all submission material.
+- Keep the product story enterprise fleet; choose the Devpost category as a separate submission decision.
 - Add a persistent rollout-result card showing pilot size, completed count, hung/quarantined devices, untouched count, outcome, and watchdog checks.
 - Show the approval's device count/blast radius and the reason it was gated.
 - Give each demo run a run/session ID and display only the current run's journal by default. Retain append-only history rather than deleting evidence.
@@ -199,7 +191,7 @@ Do not narrate the repository layout, every policy rule, every scenario, or ever
 
 ### Saturday
 
-- Write the Devpost description around Taskmaster, BYOF, and the two locked workflows.
+- Write the Devpost description around enterprise print operations, governed autonomy, and the two locked workflows.
 - Upload the continuous-take video publicly to YouTube or Vimeo.
 - Verify repository access, license, setup, diagram, video, and hosted endpoint from a clean/incognito browser.
 - Disclose pre-existing work if any was incorporated.
@@ -217,7 +209,7 @@ Do not narrate the repository layout, every policy rule, every scenario, or ever
 
 ### Must ship
 
-- Enterprise fleet queue remediation entered under the Taskmaster workflow category.
+- Enterprise printer-fleet queue remediation with job/account evidence.
 - Gemini-backed guarded firmware workflow on Cloud Run.
 - Deterministic policy, approval, pilot, watchdog, quarantine, and abort.
 - Clear current-run audit trail.
