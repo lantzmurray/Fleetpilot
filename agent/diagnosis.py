@@ -118,7 +118,10 @@ SCHEMA = {
 # symptom -> remediation mapping the LLM may propose (it cannot invent kinds;
 # unknown kinds default to HUMAN in the policy engine anyway)
 REMEDIATION_HINTS = {
-    "job_stuck": {"kind": "restart_queue", "rationale": "clear hung queue spooler"},
+    "job_stuck": {
+        "kind": "clear_stuck_job",
+        "rationale": "quarantine the suspect job and release the spooler backlog",
+    },
     "toner_low": {"kind": "order_supplies", "rationale": "reorder toner below threshold"},
     "paper_low": {"kind": "notify_poc", "rationale": "ask site contact to load paper"},
     "firmware_noncompliant": {"kind": "update_firmware",
@@ -152,7 +155,11 @@ def heuristic_diagnose(alerts: list[dict]) -> Diagnosis:
     (server, symptom), members = max(
         groups.items(), key=lambda kv: len(kv[1]))
     queues = {a.get("queue") for a in members}
-    if server == "fleet":
+    suspect = next((member for member in members
+                    if member.get("suspected_blocker")), None)
+    if symptom == "job_stuck" and suspect:
+        location = f"server {server} across {len(queues)} queues"
+    elif server == "fleet":
         location = "enterprise fleet"
     elif len(queues) == 1:
         location = f"queue {next(iter(queues))} on server {server}"
@@ -167,9 +174,21 @@ def heuristic_diagnose(alerts: list[dict]) -> Diagnosis:
     }
     if hint.get("kind") == "order_supplies":
         action["cost_usd"] = round(len(action["devices"]) * 79.99, 2)
+    if symptom == "job_stuck" and suspect:
+        root_cause = (
+            f"print spooler on {location} blocked by suspect job "
+            f"{suspect['job_id']}; {len(members)} of {len(alerts)} job alerts "
+            f"stalled across {len(queues)} queues"
+        )
+        action["rationale"] = (
+            f"quarantine suspect job {suspect['job_id']} and release the "
+            "remaining spooler backlog"
+        )
+    else:
+        root_cause = (f"{symptom} at {location} affecting "
+                      f"{len(members)} of {len(alerts)} alerts")
     return Diagnosis(
-        root_cause=f"{symptom} at {location} affecting "
-                   f"{len(members)} of {len(alerts)} alerts",
+        root_cause=root_cause,
         confidence=round(0.5 + 0.5 * share, 2),
         affected_nodes=[{"server": server,
                          "queue": next(iter(queues)) if len(queues) == 1 else "*"}],
@@ -187,7 +206,9 @@ def _compact_context(alerts: list[dict], heuristic: Diagnosis) -> dict:
             "devices": [*current["devices"], alert.get("device")],
             "queues": {*current["queues"], alert.get("queue")},
         }
-    return {
+    suspect = next((alert for alert in alerts
+                    if alert.get("suspected_blocker")), None)
+    context = {
         "alert_count": len(alerts),
         "groups": [
             {
@@ -201,6 +222,19 @@ def _compact_context(alerts: list[dict], heuristic: Diagnosis) -> dict:
         "grounded_root_cause": heuristic.root_cause,
         "grounded_confidence": heuristic.confidence,
     }
+    if suspect:
+        # Operational evidence only. Owner, account, and document title remain
+        # in the dashboard/audit record and are not sent to the model.
+        context["suspect_job"] = {
+            "job_id": suspect.get("job_id"),
+            "device": suspect.get("device"),
+            "server": suspect.get("server"),
+            "queue": suspect.get("queue"),
+            "pages": suspect.get("pages"),
+            "size_mb": suspect.get("size_mb"),
+            "datatype": suspect.get("datatype"),
+        }
+    return context
 
 
 def gemini_diagnose(alerts, heuristic: Diagnosis, api_key=None) -> Diagnosis:

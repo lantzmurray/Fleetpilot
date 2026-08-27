@@ -232,7 +232,7 @@ def test_no_credentials_never_constructs_a_client(monkeypatch):
     result = diagnose(queue_alerts())
 
     assert result.source == "heuristic"
-    assert result.proposed_actions[0]["kind"] == "restart_queue"
+    assert result.proposed_actions[0]["kind"] == "clear_stuck_job"
 
 
 def test_malformed_gemini_json_falls_back_to_grounded_heuristic(monkeypatch):

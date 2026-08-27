@@ -158,12 +158,31 @@ def reject(approval_id: str):
 def snapshot() -> dict:
     alerts = state.sim.active_alerts()
     devices = state.sim.devices
+    evidence_devices = state.sim.inventory_records(
+        state.sim.evidence_device_ids)
+    reachable = sum(
+        record["communication_status"] == "reachable"
+        for record in evidence_devices)
     return {
         "run_id": state.run_id,
         "fleet": {
             "devices": len(devices),
             "servers": sorted({d.server for d in devices}),
             "alerts_open": len(alerts),
+            "reachable": sum(d.communication_status == "reachable"
+                             for d in devices),
+        },
+        "evidence": {
+            "scenario": state.sim.scenario,
+            "synthetic": True,
+            "integration_mode": "simulator_only",
+            "devices": evidence_devices,
+            "print_jobs": state.sim.print_job_records(),
+            "network": {
+                "scope": len(evidence_devices),
+                "reachable": reachable,
+                "unreachable": len(evidence_devices) - reachable,
+            },
         },
         "alerts": alerts[:200],
         "last_summary": state.last_summary,

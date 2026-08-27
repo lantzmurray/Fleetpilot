@@ -2,239 +2,372 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>FleetPilot — Audited AIOps for Device Fleets</title>
+<title>FleetPilot — Print operations control</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
 <style>
-  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3;
-          --dim:#8b949e; --green:#3fb950; --amber:#d29922; --red:#f85149;
-          --blue:#58a6ff; }
-  * { box-sizing:border-box; margin:0; }
-  body { background:var(--bg); color:var(--fg);
-         font:14px/1.5 -apple-system, "Segoe UI", sans-serif; padding:20px; }
-  h1 { font-size:20px; } h1 span { color:var(--dim); font-weight:400; font-size:13px; }
-  .grid { display:grid; grid-template-columns: 2fr 1fr; gap:16px; margin-top:16px; }
-  .panel { background:var(--panel); border:1px solid var(--line);
-           border-radius:8px; padding:14px; }
-  .panel h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em;
-              color:var(--dim); margin-bottom:10px; }
-  .controls { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 0; }
-  button { background:#21262d; color:var(--fg); border:1px solid var(--line);
-           border-radius:6px; padding:7px 12px; cursor:pointer; font-size:13px; }
-  button:hover { border-color:var(--blue); }
-  button.run { background:#1f6feb33; border-color:var(--blue); }
-  .stats { display:flex; gap:22px; margin:12px 0 2px; flex-wrap:wrap; }
-  .stat b { font-size:22px; display:block; }
-  .stat span { color:var(--dim); font-size:12px; }
-  .rca { border-left:3px solid var(--blue); padding:8px 12px; margin:8px 0;
-         background:#0d1117; border-radius:4px; }
-  .rca .src { color:var(--dim); font-size:11px; }
-  .approval { border:1px solid var(--amber); background:#d2992215;
-              border-radius:8px; padding:12px; margin-bottom:10px; }
-  .approval h3 { color:var(--amber); font-size:13px; margin-bottom:6px; }
-  .approval button { margin-right:8px; }
-  .approve { border-color:var(--green); color:var(--green); }
-  .reject { border-color:var(--red); color:var(--red); }
-  .log { font:12px/1.7 ui-monospace, monospace; max-height:340px;
-         overflow-y:auto; }
-  .log .kind { color:var(--blue); }
-  .log .gate-auto { color:var(--green); } .log .gate-human { color:var(--amber); }
-  .log .gate-blocked, .log .rejected { color:var(--red); }
-  .alerts { max-height:220px; overflow-y:auto; font:12px/1.6 ui-monospace, monospace; }
-  .pill { display:inline-block; padding:1px 8px; border-radius:10px;
-          font-size:11px; border:1px solid var(--line); }
-  .sev-critical { color:var(--red); border-color:var(--red); }
-  .sev-high { color:var(--amber); border-color:var(--amber); }
-  .sev-medium { color:var(--blue); border-color:var(--blue); }
-  .sev-low { color:var(--dim); }
-  .empty { color:var(--dim); font-style:italic; }
-  .rollout { border:1px solid var(--line); border-radius:8px; padding:12px;
-             margin-bottom:16px; font-size:13px; }
-  .rollout h3 { font-size:13px; margin-bottom:8px; }
-  .rollout.aborted h3 { color:var(--red); }
-  .rollout.clean h3 { color:var(--green); }
-  .rollout table { border-collapse:collapse; }
-  .rollout td { padding:2px 14px 2px 0; }
-  .rollout td:first-child { color:var(--dim); }
-  .health { display:flex; gap:14px; align-items:center; margin-top:10px;
-            font-size:12px; color:var(--dim); flex-wrap:wrap; }
-  .health b { color:var(--fg); font-weight:600; }
+  :root {
+    --bg:#080d12; --panel:#111820; --panel-2:#0c131a; --line:#263440;
+    --fg:#edf3f7; --dim:#8fa0ad; --green:#57d68d; --amber:#f0b35a;
+    --red:#ff6b68; --cyan:#55c7e8; --blue:#6aa9ff;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font:14px/1.45 Inter, ui-sans-serif, -apple-system, "Segoe UI", sans-serif; }
+  button { font:inherit; }
+  .shell { width:min(1500px, 100%); margin:auto; padding:20px; }
+  .topbar { display:flex; justify-content:space-between; align-items:flex-start;
+    gap:20px; border-bottom:1px solid var(--line); padding-bottom:16px; }
+  .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.14em;
+    font:700 11px/1.2 ui-monospace, monospace; }
+  h1 { margin:4px 0 0; font-size:24px; letter-spacing:-.02em; }
+  h1 span { color:var(--dim); font-size:14px; font-weight:500; margin-left:8px; }
+  .sandbox { border:1px solid var(--amber); color:var(--amber); background:#f0b35a12;
+    border-radius:4px; padding:7px 10px; text-transform:uppercase;
+    letter-spacing:.08em; font:700 10px/1.2 ui-monospace, monospace; }
+  .kpis { display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr));
+    border:1px solid var(--line); border-radius:7px; margin:16px 0; overflow:hidden; }
+  .kpi { background:var(--panel); padding:12px 14px; border-right:1px solid var(--line); }
+  .kpi:last-child { border:0; }
+  .kpi b { display:block; font:700 22px/1.1 ui-monospace, monospace; }
+  .kpi span { color:var(--dim); font-size:11px; text-transform:uppercase;
+    letter-spacing:.07em; }
+  .toolbar { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    align-items:center; margin-bottom:16px; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; }
+  button { background:#17222c; color:var(--fg); border:1px solid #334453;
+    border-radius:5px; padding:8px 12px; cursor:pointer; }
+  button:hover { border-color:var(--cyan); }
+  button.primary { background:#113044; border-color:#327b99; }
+  button:disabled { opacity:.45; cursor:wait; }
+  .health { display:flex; gap:14px; flex-wrap:wrap; color:var(--dim); font-size:12px; }
+  .health b { color:var(--fg); }
   .health .fallback { color:var(--amber); }
   .health .live { color:var(--green); }
-  button:disabled { opacity:.45; cursor:wait; }
+  .workbench { display:grid; grid-template-columns:minmax(0, 1.55fr) minmax(310px, .7fr);
+    gap:16px; margin-bottom:16px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:7px;
+    padding:15px; min-width:0; }
+  .panel h2 { margin:0 0 11px; color:var(--dim); font-size:11px;
+    text-transform:uppercase; letter-spacing:.1em; }
+  .panel h2 span { color:#607582; font-weight:500; text-transform:none;
+    letter-spacing:0; margin-left:7px; }
+  .diagnosis { border-left:3px solid var(--cyan); background:var(--panel-2);
+    padding:12px 13px; border-radius:3px; }
+  .diagnosis strong { display:block; font-size:15px; margin-bottom:6px; }
+  .meta { color:var(--dim); font-size:12px; }
+  .outcome { display:flex; gap:7px; flex-wrap:wrap; margin-top:10px; }
+  .chip { border:1px solid var(--line); border-radius:10px; padding:2px 8px;
+    color:var(--dim); font:11px ui-monospace, monospace; }
+  .chip.good { color:var(--green); border-color:#347753; }
+  .chip.warn { color:var(--amber); border-color:#8e672f; }
+  .chip.bad { color:var(--red); border-color:#914643; }
+  .approval { border:1px solid var(--amber); background:#f0b35a0c;
+    border-radius:5px; padding:12px; margin-bottom:10px; }
+  .approval h3 { color:var(--amber); font-size:11px; letter-spacing:.08em;
+    margin:0 0 7px; }
+  .approval .actions { margin-top:10px; display:flex; gap:7px; }
+  .approve { color:var(--green); border-color:#347753; }
+  .reject { color:var(--red); border-color:#914643; }
+  .empty { color:var(--dim); font-style:italic; }
+  .rollout { margin-bottom:12px; }
+  .rollout h3 { margin:0 0 9px; font-size:12px; }
+  .rollout.aborted { border-color:#914643; }
+  .rollout.aborted h3 { color:var(--red); }
+  .rollout.clean { border-color:#347753; }
+  .rollout.clean h3 { color:var(--green); }
+  .mini-grid { display:grid; grid-template-columns:1fr auto; gap:5px 16px;
+    font-size:12px; }
+  .mini-grid span:nth-child(odd) { color:var(--dim); }
+  .evidence-head { display:flex; justify-content:space-between; gap:16px;
+    align-items:start; margin-bottom:8px; }
+  .evidence-head h2 { margin-bottom:3px; }
+  .evidence-summary { color:var(--dim); font:12px ui-monospace, monospace;
+    text-align:right; }
+  .table-wrap { overflow:auto; max-height:390px; border:1px solid var(--line);
+    border-radius:5px; }
+  table { width:100%; border-collapse:collapse; min-width:880px; }
+  th { position:sticky; top:0; z-index:1; background:#17222c; color:#9cafbd;
+    text-align:left; text-transform:uppercase; letter-spacing:.07em;
+    font-size:10px; padding:8px 10px; border-bottom:1px solid var(--line); }
+  td { padding:9px 10px; border-bottom:1px solid #202c35; vertical-align:top;
+    font-size:12px; }
+  tr:last-child td { border-bottom:0; }
+  tr.suspect { background:#ff6b680a; }
+  .primary-line { color:var(--fg); font-weight:650; white-space:nowrap; }
+  .secondary { color:var(--dim); font-size:11px; margin-top:2px; }
+  .mono { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .status { display:inline-block; border:1px solid var(--line); border-radius:10px;
+    padding:1px 7px; font:10px ui-monospace, monospace; white-space:nowrap; }
+  .status.reachable, .status.released, .status.compliant { color:var(--green); }
+  .status.blocking, .status.quarantined { color:var(--red); }
+  .status.waiting, .status.update_required { color:var(--amber); }
+  .lower { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+  .alerts, .log { max-height:210px; overflow:auto;
+    font:11px/1.65 ui-monospace, monospace; }
+  .alert-line { display:grid; grid-template-columns:68px 92px 1fr; gap:8px;
+    border-bottom:1px solid #202c35; padding:4px 0; }
+  .kind { color:var(--cyan); }
+  details { color:var(--dim); font-size:12px; }
+  summary { cursor:pointer; }
+  .scenario-note { color:var(--dim); font-size:11px; }
+  @media (max-width:900px) {
+    .workbench, .lower { grid-template-columns:1fr; }
+    .kpis { grid-template-columns:1fr 1fr; }
+    .kpi:nth-child(2) { border-right:0; }
+    .kpi:nth-child(-n+2) { border-bottom:1px solid var(--line); }
+  }
+  @media (max-width:560px) {
+    .shell { padding:14px; }
+    .topbar { flex-direction:column; }
+    h1 span { display:block; margin:3px 0 0; }
+    .health { width:100%; }
+  }
 </style>
 </head>
 <body>
-<h1>FleetPilot <span>— agent proposes · policy engine disposes · everything journaled</span></h1>
-
-<div class="stats panel">
-  <div class="stat"><b id="s-devices">–</b><span>devices</span></div>
-  <div class="stat"><b id="s-servers">–</b><span>print servers</span></div>
-  <div class="stat"><b id="s-alerts">–</b><span>open alerts</span></div>
-  <div class="health" id="health"></div>
-</div>
-
-<div class="controls">
-  <span style="color:var(--dim); align-self:center; font-size:12px">live demo →</span>
-  <button class="run" onclick="run('queue_hang')">Queue hang (30 alerts)</button>
-  <button onclick="reset()">New run</button>
-  <button class="run" onclick="run('firmware_push_freezes')">Guarded firmware rollout</button>
-</div>
-<details style="margin-top:8px; color:var(--dim)">
-  <summary style="cursor:pointer; font-size:12px">Additional test scenarios</summary>
-  <div class="controls" style="margin-top:8px">
-    <button class="run" onclick="run('alert_storm')">Alert storm</button>
-    <button class="run" onclick="run('firmware_drift')">Clean firmware pilot</button>
-    <button class="run" onclick="run('low_supplies')">Low supplies</button>
-  </div>
-</details>
-
-<div class="grid">
-  <div>
-    <div class="panel" style="margin-bottom:16px">
-      <h2>Latest diagnosis</h2>
-      <div id="rca" class="empty">no cycle run yet — inject a scenario</div>
+<main class="shell">
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">Print operations control</div>
+      <h1>FleetPilot <span>evidence-led response for enterprise printer fleets</span></h1>
     </div>
+    <div class="sandbox">synthetic records · simulator only · no device connections</div>
+  </header>
+
+  <section class="kpis" aria-label="Fleet status">
+    <div class="kpi"><b id="s-devices">–</b><span>printers</span></div>
+    <div class="kpi"><b id="s-servers">–</b><span>print servers</span></div>
+    <div class="kpi"><b id="s-reachable">–</b><span>reachable</span></div>
+    <div class="kpi"><b id="s-alerts">–</b><span>open alerts</span></div>
+  </section>
+
+  <section class="toolbar">
+    <div class="controls" aria-label="Demo scenarios">
+      <button class="primary" onclick="run('queue_hang')">Queue hang · 22 queues</button>
+      <button class="primary" onclick="run('firmware_push_freezes')">Guarded firmware rollout</button>
+      <button onclick="reset()">New run</button>
+    </div>
+    <div class="health" id="health" aria-live="polite"></div>
+  </section>
+
+  <details>
+    <summary>Additional test scenarios</summary>
+    <div class="controls" style="margin:8px 0 14px">
+      <button onclick="run('alert_storm')">Alert storm</button>
+      <button onclick="run('firmware_drift')">Clean firmware pilot</button>
+      <button onclick="run('low_supplies')">Low supplies</button>
+    </div>
+  </details>
+
+  <section class="workbench">
+    <div class="panel">
+      <h2>Incident assessment</h2>
+      <div id="rca" class="empty">Choose a scenario to start a new run.</div>
+    </div>
+    <div>
+      <div id="rollout"></div>
+      <div class="panel">
+        <h2>Decision gate</h2>
+        <div id="approvals" class="empty">No action awaiting approval.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="evidence-head">
+      <div>
+        <h2>Incident evidence <span>synthetic records</span></h2>
+        <div class="scenario-note">Identity, ownership, network reachability, and change state stay attached to the incident.</div>
+      </div>
+      <div id="evidence-summary" class="evidence-summary">No active incident</div>
+    </div>
+    <div id="evidence" class="empty">Run Queue hang or Guarded firmware rollout.</div>
+  </section>
+
+  <section class="lower">
     <div class="panel">
       <h2>Open alerts</h2>
-      <div id="alerts" class="alerts empty">–</div>
-    </div>
-  </div>
-  <div>
-    <div id="rollout"></div>
-    <div class="panel" style="margin-bottom:16px">
-      <h2>Approval inbox</h2>
-      <div id="approvals" class="empty">nothing awaiting approval</div>
+      <div id="alerts" class="alerts empty">All clear</div>
     </div>
     <div class="panel">
-      <h2>Audit journal — run <span id="run-id">–</span></h2>
-      <div id="journal" class="log empty">–</div>
+      <h2>Audit journal <span>run <span id="run-id">–</span></span></h2>
+      <div id="journal" class="log empty">No events</div>
     </div>
-  </div>
-</div>
+  </section>
+</main>
 
 <script>
 const $ = id => document.getElementById(id);
-
 let busy = false;
 
 function render(s) {
   $('s-devices').textContent = s.fleet.devices;
   $('s-servers').textContent = s.fleet.servers.length;
+  $('s-reachable').textContent = s.fleet.reachable;
   $('s-alerts').textContent = s.fleet.alerts_open;
   $('run-id').textContent = s.run_id || '–';
 
   const h = s.health || {};
   const src = h.diagnosis_source;
   $('health').innerHTML =
-    `<span>model: <b>${esc(h.model)}</b></span>` +
-    `<span>deployment: <b>${esc(h.deployment||'local')}</b></span>` +
-    (src ? `<span>diagnosis: <b class="${src==='heuristic'?'fallback':'live'}">${
-      src==='heuristic' ? 'deterministic fallback' : src+' (live)'}</b></span>` : '') +
-    (h.fallback_reason ? `<span>fallback: <b class="fallback">${
-      esc(h.fallback_reason)}</b></span>` : '') +
-    `<span>fleet: synthetic sandbox</span>`;
+    `<span>model <b>${esc(h.model)}</b></span>` +
+    `<span>runtime <b>${esc(h.deployment || 'local')}</b></span>` +
+    (src ? `<span>RCA <b class="${src === 'heuristic' ? 'fallback' : 'live'}">${
+      esc(src === 'heuristic' ? 'deterministic fallback' : `${src} live`)}</b></span>` : '') +
+    (h.fallback_reason ? `<span>fallback <b class="fallback">${esc(h.fallback_reason)}</b></span>` : '');
 
   const sum = s.last_summary || {};
+  const executed = sum.executed || [];
+  const escalated = sum.escalated || [];
+  const blocked = sum.blocked || [];
   $('rca').innerHTML = sum.root_cause
-    ? `<div class="rca"><b>${esc(sum.root_cause)}</b><br>
-       confidence ${sum.confidence} · source: ${sum.diagnosis_source}<br>
-       executed: ${sum.executed.length} · escalated: ${sum.escalated.length} ·
-       blocked: ${sum.blocked.length}</div>` : '';
+    ? `<div class="diagnosis"><strong>${esc(sum.root_cause)}</strong>
+       <div class="meta">confidence ${esc(sum.confidence)} · ${esc(sum.diagnosis_source)}</div>
+       <div class="outcome">
+         <span class="chip good">${executed.length} executed</span>
+         <span class="chip warn">${escalated.length} approval</span>
+         <span class="chip bad">${blocked.length} blocked</span>
+       </div></div>`
+    : '<span class="empty">Choose a scenario to start a new run.</span>';
 
   $('alerts').innerHTML = s.alerts.length
-    ? s.alerts.slice(0,100).map(a =>
-        `<div><span class="pill sev-${a.severity}">${a.severity}</span>
-         ${a.device} ${a.symptom} @ ${a.server}</div>`).join('')
-    : '<span class="empty">all clear ✓</span>';
+    ? s.alerts.slice(0, 100).map(a =>
+        `<div class="alert-line"><span class="status ${esc(a.severity)}">${esc(a.severity)}</span>
+         <span>${esc(a.device)}</span><span>${esc(a.symptom)} · ${esc(a.server)}</span></div>`).join('')
+    : '<span class="empty">All clear</span>';
 
   $('approvals').innerHTML = s.pending_approvals.length
     ? s.pending_approvals.map(p =>
         `<div class="approval"><h3>APPROVAL REQUIRED</h3>
-         <b>${esc(p.action.kind)}</b> — ${esc(p.action.rationale||'')}<br>
-         blast radius: ${(p.action.devices||[]).length} devices
-         ${p.action.cost_usd ? ` · cost: $${esc(p.action.cost_usd)}` : ''}<br>
-         <span style="color:var(--dim)">gated because: ${esc(p.reason||'')}</span>
-         <div style="margin-top:8px">
+         <div><strong>${esc(p.action.kind)}</strong> · ${esc(p.action.rationale || '')}</div>
+         <div class="meta">${(p.action.devices || []).length} printers · ${esc(p.reason || '')}
+         ${p.action.cost_usd ? ` · $${esc(p.action.cost_usd)}` : ''}</div>
+         <div class="actions">
            <button class="approve" onclick="decide('${p.id}','approve')">${
-             p.action.kind==='update_firmware' ? 'Approve 5-device pilot' : 'Approve'}</button>
+             p.action.kind === 'update_firmware' ? 'Approve 5-printer pilot' : 'Approve'}</button>
            <button class="reject" onclick="decide('${p.id}','reject')">Reject</button>
          </div></div>`).join('')
-    : '<span class="empty">nothing awaiting approval</span>';
+    : '<span class="empty">No action awaiting approval.</span>';
 
-  const r = s.rollout_report;
-  $('rollout').innerHTML = r ? rolloutCard(r) : '';
+  $('rollout').innerHTML = s.rollout_report ? rolloutCard(s.rollout_report) : '';
+  renderEvidence(s.evidence || {});
+  $('journal').innerHTML = s.journal.length ? s.journal.map(e =>
+    `<div><span class="kind">[${esc(e.kind)}]</span> ${summ(e)}</div>`).join('')
+    : '<span class="empty">No events</span>';
+}
 
-  $('journal').innerHTML = s.journal.map(e =>
-    `<div><span class="kind journal-${cls(e)}">[${e.kind}]</span>
-     ${summ(e)}</div>`).join('');
+function renderEvidence(e) {
+  const jobs = e.print_jobs || [];
+  const devices = e.devices || [];
+  const network = e.network || {scope:0, reachable:0, unreachable:0};
+  if (jobs.length) {
+    const queues = new Set(jobs.map(job => job.queue)).size;
+    $('evidence-summary').textContent = `${jobs.length} jobs · ${queues} queues · ${network.reachable}/${network.scope} reachable`;
+    $('evidence').innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Signal</th><th>Job title</th><th>Account</th><th>Printer / queue</th><th>Workload</th><th>Status</th></tr></thead>
+      <tbody>${jobs.map(job => `<tr class="${job.suspected_blocker ? 'suspect' : ''}">
+        <td><span class="status ${job.suspected_blocker ? 'blocking' : ''}">${
+          job.suspected_blocker ? 'suspect' : 'waiting'}</span><div class="secondary mono">${esc(job.job_id)}</div></td>
+        <td><div class="primary-line">${esc(job.document_name)}</div><div class="secondary">${esc(job.department)}</div></td>
+        <td><div class="primary-line mono">${esc(job.owner_account)}</div><div class="secondary mono">${esc(job.account_code)}</div></td>
+        <td><div class="primary-line mono">${esc(job.device_id)} · ${esc(job.queue)}</div><div class="secondary mono">${esc(job.server)}</div></td>
+        <td><div class="primary-line">${esc(job.pages)} pages · ${esc(job.size_mb)} MB</div><div class="secondary">${esc(job.datatype)} · ${shortTime(job.submitted_at)}</div></td>
+        <td><span class="status ${esc(job.status)}">${esc(job.status)}</span></td>
+      </tr>`).join('')}</tbody></table></div>`;
+    return;
+  }
+  if (devices.length) {
+    $('evidence-summary').textContent = `${devices.length} printers · ${network.reachable}/${network.scope} reachable · ${network.unreachable} unreachable`;
+    $('evidence').innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Serial</th><th>Printer / network</th><th>Current → target</th><th>Managing server</th><th>Reachability</th><th>Last poll</th></tr></thead>
+      <tbody>${devices.map(device => `<tr>
+        <td><div class="primary-line mono">${esc(device.serial_number)}</div><div class="secondary mono">${esc(device.device_id)}</div></td>
+        <td><div class="primary-line">${esc(device.manufacturer)} ${esc(device.model)}</div>
+          <div class="secondary mono">${esc(device.ip_address)} · ${esc(device.mac_address)}</div></td>
+        <td><div class="primary-line mono">${esc(device.current_firmware)} → ${esc(device.target_firmware)}</div>
+          <div class="secondary"><span class="status ${esc(device.update_status)}">${esc(device.update_status)}</span></div></td>
+        <td><div class="primary-line mono">${esc(device.server)} · ${esc(device.queue)}</div>
+          <div class="secondary">${esc(device.site)} · ${esc(device.point_of_contact)}</div>
+          <div class="secondary">${esc(device.address)}</div></td>
+        <td><span class="status ${esc(device.communication_status)}">${esc(device.communication_status)}</span>
+          <div class="secondary">${esc(device.management_channel)}</div></td>
+        <td><div class="primary-line mono">${esc(device.last_poll_age_seconds)}s ago</div><div class="secondary">synthetic poll record</div></td>
+      </tr>`).join('')}</tbody></table></div>`;
+    return;
+  }
+  $('evidence-summary').textContent = 'No active incident';
+  $('evidence').innerHTML = '<span class="empty">Run Queue hang or Guarded firmware rollout.</span>';
 }
 
 function rolloutCard(r) {
   const aborted = r.outcome === 'aborted';
   return `<div class="panel rollout ${aborted ? 'aborted' : 'clean'}">
-    <h3>${aborted
-      ? 'ROLLOUT ABORTED — frozen push detected, fleet protected'
-      : 'PILOT VERIFIED CLEAN — expansion awaiting approval'}</h3>
-    <table>
-      <tr><td>pilot batch</td><td>${r.pilot_size} devices</td></tr>
-      <tr><td>completed</td><td>${r.pilot_completed}</td></tr>
-      <tr><td>hung / quarantined</td><td>${(r.hung||[]).length} / ${
-        (r.quarantined||[]).length} ${r.hung && r.hung.length ? '('+r.hung.join(', ')+')' : ''}</td></tr>
-      <tr><td>fleet untouched</td><td>${r.fleet_untouched} devices</td></tr>
-      <tr><td>watchdog checks</td><td>${r.watchdog_checks}</td></tr>
-    </table></div>`;
+    <h3>${aborted ? 'ROLLOUT ABORTED · WATCHDOG TIMEOUT' : 'PILOT VERIFIED · EXPANSION GATED'}</h3>
+    <div class="mini-grid">
+      <span>pilot</span><span>${esc(r.pilot_size)} printers</span>
+      <span>completed</span><span>${esc(r.pilot_completed)}</span>
+      <span>quarantined</span><span>${esc((r.quarantined || []).length)}</span>
+      <span>fleet untouched</span><span>${esc(r.fleet_untouched)}</span>
+      <span>watchdog checks</span><span>${esc(r.watchdog_checks)}</span>
+    </div></div>`;
 }
 
-function cls(e){ return e.kind==='gate' ? 'gate-' +
-  (typeof e.payload.decision==='string' ? e.payload.decision : '') : e.kind; }
-function summ(e){ const p=e.payload;
-  if (e.kind==='diagnose') return esc(p.root_cause);
-  if (e.kind==='gate') return `${p.action.kind} → ${p.decision} (${esc(p.reason)})`;
-  if (e.kind==='human_decision') return `${p.action.kind} → ${p.decision}`;
-  if (e.kind==='observe') return `${p.alert_count} alerts observed`;
-  if (e.kind==='cycle_complete') return `${p.executed.length} executed,
-    ${p.escalated.length} escalated, ${p.blocked.length} blocked`;
-  if (e.kind==='rollout_pilot') return `pilot pushed to ${
-    (p.result&&p.result.completed?p.result.completed.length:0)} devices`;
-  if (e.kind==='watchdog') return `check ${p.check}: ${p.still_hung.length} still hung`;
-  if (e.kind==='rollout_aborted') return `quarantined ${
-    (p.quarantined||[]).join(', ')} — fleet untouched`;
-  if (e.kind==='rollout_pilot_verified') return 'pilot clean, expansion proposed';
-  if (e.kind==='rollout_report') return p.outcome;
-  if (e.kind==='run_started') return `run ${p.run}`;
-  return ''; }
-function esc(s){ return String(s??'').replace(/[<>&]/g,
-  c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+function shortTime(value) {
+  const match = String(value || '').match(/T(\d\d:\d\d)/);
+  return match ? match[1] : esc(value);
+}
+function summ(e) {
+  const p = e.payload || {};
+  if (e.kind === 'diagnose') return esc(p.root_cause);
+  if (e.kind === 'gate') return `${esc(p.action.kind)} → ${esc(p.decision)} (${esc(p.reason)})`;
+  if (e.kind === 'human_decision') return `${esc(p.action.kind)} → ${esc(p.decision)}`;
+  if (e.kind === 'observe') return `${esc(p.alert_count)} alerts observed`;
+  if (e.kind === 'cycle_complete') return `${esc(p.executed.length)} executed, ${esc(p.escalated.length)} escalated, ${esc(p.blocked.length)} blocked`;
+  if (e.kind === 'rollout_pilot') return `pilot completed on ${esc((p.result && p.result.completed || []).length)} printers`;
+  if (e.kind === 'watchdog') return `check ${esc(p.check)} · ${esc((p.still_hung || []).length)} still hung`;
+  if (e.kind === 'rollout_aborted') return `quarantined ${esc((p.quarantined || []).join(', '))} · fleet untouched`;
+  if (e.kind === 'rollout_pilot_verified') return 'pilot clean · expansion proposed';
+  if (e.kind === 'rollout_report') return esc(p.outcome);
+  if (e.kind === 'run_started') return `run ${esc(p.run)}`;
+  return '';
+}
+function esc(value) { return String(value ?? '').replace(/[<>&"']/g, char => ({
+  '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":'&#39;'
+})[char]); }
 
-async function guard(fn){
-  if (busy) return; busy = true;
-  document.querySelectorAll('button').forEach(b => b.disabled = true);
+async function guard(fn) {
+  if (busy) return;
+  busy = true;
+  document.querySelectorAll('button').forEach(button => button.disabled = true);
   try { await fn(); }
-  finally { busy = false;
-    document.querySelectorAll('button').forEach(b => b.disabled = false); }
+  catch (error) { console.error(error); alert(`FleetPilot request failed: ${error.message}`); }
+  finally {
+    busy = false;
+    document.querySelectorAll('button').forEach(button => button.disabled = false);
+  }
 }
-async function run(name){
+async function run(name) {
   await guard(async () => {
-    const r = await fetch('/api/scenario/'+name, {method:'POST'});
-    render(await responseJson(r));
+    const response = await fetch(`/api/scenario/${name}`, {method:'POST'});
+    render(await responseJson(response));
   });
 }
-async function decide(id, act){
+async function decide(id, action) {
   await guard(async () => {
-    const r = await fetch(`/api/${act}/${id}`, {method:'POST'});
-    render(await responseJson(r));
+    const response = await fetch(`/api/${action}/${id}`, {method:'POST'});
+    render(await responseJson(response));
   });
 }
-async function reset(){
+async function reset() {
   await guard(async () => {
-    const r = await fetch('/api/reset', {method:'POST'});
-    render(await responseJson(r));
+    const response = await fetch('/api/reset', {method:'POST'});
+    render(await responseJson(response));
   });
 }
-async function responseJson(r){
-  const body = await r.json();
-  if (!r.ok) throw new Error(body.detail || `request failed (${r.status})`);
+async function responseJson(response) {
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.detail || `request failed (${response.status})`);
   return body;
 }
 fetch('/api/state').then(responseJson).then(render).catch(console.error);

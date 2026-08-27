@@ -15,7 +15,8 @@ def build_tools(sim) -> dict:
         Day-2: the agent forecasts run-out from usage history and drafts
         vendor-grouped purchase orders from this."""
         return [
-            {"device": d.device_id, "model": d.model,
+            {"device": d.device_id, "manufacturer": d.manufacturer,
+             "model": d.model, "serial_number": d.serial_number,
              "toner_pct": d.toner_pct, "paper_pct": d.paper_pct}
             for d in sim.devices
             if d.toner_pct <= 15 or d.paper_pct <= 10
@@ -23,8 +24,10 @@ def build_tools(sim) -> dict:
 
     return {
         "list_alerts": sim.active_alerts,
-        "get_topology": lambda: [{"device": d.device_id, "server": d.server,
-                                  "queue": d.queue} for d in sim.devices],
+        "get_topology": lambda: [{"device": d.device_id,
+                                  "server": d.server, "queue": d.queue,
+                                  "ip_address": d.ip_address}
+                                 for d in sim.devices],
         "supplies_report": supplies_report,
         "propose_action": lambda action: action,  # journal + gate happens upstream
     }

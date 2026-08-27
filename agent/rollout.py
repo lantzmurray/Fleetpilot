@@ -45,6 +45,7 @@ def run_firmware_rollout(sim, journal, action: dict) -> dict:
         })
         return {"outcome": "aborted", "pilot_size": len(pilot),
                 "pilot_completed": completed,
+                "completed_devices": sorted(result.get("completed", [])),
                 "hung": sorted(hung),
                 "quarantined": sorted(sim.quarantined),
                 "fleet_untouched": len(remainder),
@@ -53,6 +54,8 @@ def run_firmware_rollout(sim, journal, action: dict) -> dict:
     journal.log("rollout_pilot_verified", {
         "pilot": pilot, "outcome": "clean"})
     return {"outcome": "pilot_clean", "pilot_size": len(pilot),
-            "pilot_completed": completed, "hung": [],
+            "pilot_completed": completed,
+            "completed_devices": sorted(result.get("completed", [])),
+            "hung": [],
             "remaining_devices": remainder,
             "fleet_untouched": len(remainder), "watchdog_checks": ticks}

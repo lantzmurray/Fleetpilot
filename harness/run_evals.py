@@ -93,10 +93,12 @@ def eval_end_to_end_diagnosis() -> bool:
     sim = FleetSimulator.seed()
     sim.inject_scenario("queue_hang")
     summary = run_tick(sim, PolicyEngine.defaults(), Journal(":memory:"))
-    ok_rca = check("RCA identifies queue-hang root cause",
-                   "job_stuck" in summary["root_cause"])
+    ok_rca = check("RCA identifies the shared spooler and suspect job",
+                   "spooler" in summary["root_cause"] and
+                   "JOB-78421" in summary["root_cause"])
     kinds = [a["kind"] for a, _ in summary["executed"]]
-    ok_fix = check("restart_queue auto-executes", "restart_queue" in kinds)
+    ok_fix = check("suspect job clears and backlog releases",
+                   "clear_stuck_job" in kinds)
     ok_src = check("diagnosis source reported", summary["diagnosis_source"] in
                    {"gemini", "heuristic"})
     return ok_rca and ok_fix and ok_src

@@ -45,10 +45,25 @@ def test_queue_incident_is_thirty_jobs_across_twenty_two_queues():
     assert suspects[0]["owner_account"] == "jordan.lee"
     assert suspects[0]["account_code"] == "MKT-204"
     assert suspects[0]["size_mb"] > 1000
+    assert suspects[0]["datatype"] == "PDF"
     assert all({"job_id", "document_name", "owner_account", "account_code",
                 "department", "submitted_at", "pages", "size_mb", "status"}
                <= set(job) for job in jobs)
     assert sum(alert["suspected_blocker"] for alert in sim.active_alerts()) == 1
+
+
+def test_network_alert_evidence_matches_device_reachability_and_server():
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("alert_storm")
+
+    records = {record["device_id"]: record for record in
+               sim.inventory_records(sim.evidence_device_ids)}
+
+    assert len(records) == 150
+    assert all(records[alert["device"]]["server"] == alert["server"]
+               for alert in sim.active_alerts())
+    assert all(record["communication_status"] == "unreachable"
+               for record in records.values())
 
 
 def test_queue_remediation_preserves_job_evidence_and_releases_backlog():
