@@ -100,15 +100,17 @@ expansion after a pilot. `python -m harness.run_evals` proves each guard
 fires; all tests run offline with model credentials disabled.
 
 ## Status
-**DEPLOYED BASELINE + TEST-READY UPDATE:** Cloud Run is live at
-<https://fleetpilot-118750462659.us-central1.run.app>. The current evidence
-update passes 11/11 offline eval scenarios and 39/39 pytest cases at 87.26%
-coverage; both locked workflows pass browser QA with zero console errors. The
-update is live on Cloud Run revision `fleetpilot-00003-pmv`.
-Gemini passed the strict live gate with three queue and three 30-device
-firmware diagnoses at 3.5–6.3 seconds each, without fallback. See
-[`CONTEST_PLAN.md`](CONTEST_PLAN.md) and [`docs/TASKS.md`](docs/TASKS.md) for
-the current execution plan.
+**DEMO-READY:** Cloud Run is live at
+<https://fleetpilot-118750462659.us-central1.run.app> on revision
+`fleetpilot-00003-pmv` (`gemini-3.5-flash` @ Vertex, service-account auth).
+The current evidence update passes 11/11 offline eval scenarios and 39/39
+pytest cases at 87.26% coverage; both locked workflows pass browser QA with
+zero console errors, and three consecutive hosted rehearsal runs
+(`scripts/rehearse_hosted.py`) completed both workflows with
+`source: gemini`, no fallback, and the expected end states. Gemini passed the
+strict live gate with three queue and three 30-device firmware diagnoses at
+3.5–6.3 seconds each, without fallback. See [`CONTEST_PLAN.md`](CONTEST_PLAN.md)
+and [`docs/TASKS.md`](docs/TASKS.md) for the current execution plan.
 
 ## Disclosure
 Every record is synthetic — including people/account labels, documentation-only

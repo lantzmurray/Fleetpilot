@@ -35,7 +35,12 @@ submission choice, not a product claim. Plan: `../CONTEST_PLAN.md`
 
 ## Thursday — rehearse & record
 
-- [ ] R1: Warm service; 3 consecutive one-take rehearsals <3:15, Gemini (not fallback), correct end states
+- [x] R1: Warm service; 3 consecutive one-take rehearsals <3:15, Gemini (not fallback), correct end states (Aug 27)
+  - `scripts/rehearse_hosted.py` vs revision `fleetpilot-00003-pmv`: 3/3 full sequences passed.
+    Queue diagnoses 33.8s cold / 4.7–9.7s warmed; firmware 6.9–8.7s; all `source:gemini`,
+    `gemini-3.5-flash` @ Vertex, no fallback. End states each run: 30→0 alerts, 29 released /
+    1 quarantined job; pilot 5 (2 completed, 3 quarantined, 25 untouched), outcome `aborted`,
+    no auto-expansion, run IDs isolated.
 - [ ] R2: Record final continuous take at 1× speed, .run.app visible, no cuts; upload pending Saturday
 
 ## Friday — freeze
@@ -52,4 +57,4 @@ submission choice, not a product claim. Plan: `../CONTEST_PLAN.md`
 ## Release states
 
 - TEST-READY: G1–G3 pass · DEMO-READY: G1–G5 + Thursday rehearsals · SUBMISSION-READY: S1–S2 verified
-- **Current: G1–G5 PASSED — DEMO-READY pending Thursday's 3× hosted one-take rehearsals.**
+- **Current: G1–G5 + R1 PASSED — DEMO-READY. R2 recording and F1–S2 remain.**
