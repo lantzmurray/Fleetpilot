@@ -38,7 +38,7 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 - Deterministic policy: allowlist, denylist, action cap, blast-radius gate, purchase cap, and notification cooldown.
 - Staged firmware rollout: five-device pilot, watchdog, abort, quarantine, and no automatic fleet-wide expansion.
 - Gemini timeout guard degrades to the heuristic path instead of hanging indefinitely.
-- Offline harness passes **11/11 scenarios**; pytest passes **37/37** at **87.21% coverage**.
+- Offline harness passes **11/11 scenarios**; pytest passes **39/39** at **87.26% coverage**.
 - A fresh virtual environment completes the README eval, CLI, and web quickstart.
 - The full API sequence passes five consecutive local runs with isolated run IDs.
 - The real browser path proves queue remediation plus the guarded 5-device abort.
@@ -53,8 +53,11 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 
 - Cloud Run deployment passed on August 26; the public service completed the
   prior three-scene workflow in 15.7 seconds on Vertex AI.
-- The realistic job/device evidence update is locally verified and must be
-  redeployed and rehearsed before recording.
+- The realistic evidence update is deployed from commit `4221ab2` on revision
+  `fleetpilot-00003-pmv`. Hosted Vertex/Gemini verification cleared all 30
+  queue alerts in 4.13 seconds and produced the guarded 2-completed /
+  3-quarantined / 25-untouched firmware outcome in 6.81 seconds; all 30 pilot
+  evidence records remained reachable.
 
 ## Locked demo story
 

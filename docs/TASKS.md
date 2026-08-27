@@ -29,7 +29,9 @@ submission choice, not a product claim. Plan: `../CONTEST_PLAN.md`
   - Service: https://fleetpilot-118750462659.us-central1.run.app · Revision fleetpilot-00001-mz4
   - Commit 59116e2 pushed to github.com/lantzmurray/Fleetpilot · Model gemini-3.5-flash @ Vertex global · service-account auth (no API key shipped)
   - Hosted verification: full 3-scene demo passed in 15.7s (queue hang cleared; firmware gated+approved; pilot aborted, 3 hung/quarantined, 25 untouched)
-- [x] G6: Realistic synthetic evidence — 30 jobs / 22 queues with owner and account; 200 printer records with serial/IP/MAC/site/contact; current→target firmware; reachability and last-poll state; browser QA passes both locked paths with zero console errors (Aug 27)
+- [x] G6: Realistic synthetic evidence — 30 jobs / 22 queues with owner and account; 200 printer records with serial/IP/MAC/site/contact; current→target firmware; reachability and last-poll state (Aug 27)
+  - Local: 39/39 pytest at 87.26%, 11/11 eval scenarios, code/security review clear, both browser paths at zero console errors.
+  - Hosted: commit `4221ab2`, revision `fleetpilot-00003-pmv`, Vertex/Gemini queue path 4.13s (30 alerts cleared, 29 jobs released), firmware diagnosis 6.81s (2 completed, 3 quarantined, 25 untouched, all 30 reachable).
 
 ## Thursday — rehearse & record
 

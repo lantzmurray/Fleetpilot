@@ -102,8 +102,9 @@ fires; all tests run offline with model credentials disabled.
 ## Status
 **DEPLOYED BASELINE + TEST-READY UPDATE:** Cloud Run is live at
 <https://fleetpilot-118750462659.us-central1.run.app>. The current evidence
-update passes 11/11 offline eval scenarios and 37/37 pytest cases at 87.21%
-coverage; both locked workflows pass browser QA with zero console errors.
+update passes 11/11 offline eval scenarios and 39/39 pytest cases at 87.26%
+coverage; both locked workflows pass browser QA with zero console errors. The
+update is live on Cloud Run revision `fleetpilot-00003-pmv`.
 Gemini passed the strict live gate with three queue and three 30-device
 firmware diagnoses at 3.5–6.3 seconds each, without fallback. See
 [`CONTEST_PLAN.md`](CONTEST_PLAN.md) and [`docs/TASKS.md`](docs/TASKS.md) for
