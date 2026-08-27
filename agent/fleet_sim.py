@@ -362,4 +362,6 @@ class FleetSimulator:
                 if job.device_id in device_ids else job
                 for job in self.print_jobs
             ]
-        return {"applied": action, "alerts_cleared": before - len(self.alerts)}
+        return {"applied": action,
+                "effective_devices": sorted(device_ids),
+                "alerts_cleared": before - len(self.alerts)}

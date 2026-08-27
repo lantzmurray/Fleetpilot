@@ -2,6 +2,7 @@
 
 from ipaddress import ip_address
 
+from agent.diagnosis import Diagnosis
 from agent.fleet_sim import FleetSimulator
 from agent.journal import Journal
 from agent.main import run_tick
@@ -81,6 +82,58 @@ def test_queue_remediation_preserves_job_evidence_and_releases_backlog():
         "quarantined"
     ]
     assert sum(job["status"] == "released" for job in jobs) == 29
+
+
+def test_executor_cannot_expand_beyond_the_policy_reviewed_scope():
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("queue_hang")
+    suspect = next(job for job in sim.print_job_records()
+                   if job["suspected_blocker"])
+
+    result = sim.execute({
+        "kind": "clear_stuck_job",
+        "devices": [suspect["device_id"]],
+        "rationale": "quarantine the suspect job",
+    })
+
+    assert result["alerts_cleared"] == 1
+    assert len(sim.active_alerts()) == 29
+    assert sum(job["status"] == "waiting"
+               for job in sim.print_job_records()) == 29
+
+
+def test_model_suspect_target_is_grounded_before_the_policy_gate(
+        monkeypatch, memory_journal):
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("queue_hang")
+    suspect = next(job for job in sim.print_job_records()
+                   if job["suspected_blocker"])
+    model_result = Diagnosis(
+        root_cause="suspect job blocked shared server spooler",
+        confidence=0.95,
+        affected_nodes=[],
+        proposed_actions=[{
+            "kind": "clear_stuck_job",
+            "devices": [suspect["device_id"]],
+            "rationale": "quarantine the suspect job",
+        }],
+        source="gemini",
+    )
+    monkeypatch.setattr("agent.main.diagnose", lambda _alerts: model_result)
+
+    summary = run_tick(sim, PolicyEngine.defaults(), memory_journal)
+
+    action, result = summary["executed"][0]
+    assert len(action["devices"]) == 30
+    assert result["alerts_cleared"] == 30
+    assert sim.active_alerts() == []
+    scope_events = [event for event in memory_journal.replay()
+                    if event["kind"] == "action_scope_grounded"]
+    assert len(scope_events) == 1
+    assert scope_events[0]["payload"]["requested_devices"] == [
+        suspect["device_id"]
+    ]
+    assert len(scope_events[0]["payload"]["effective_devices"]) == 30
 
 
 def test_firmware_records_separate_reachability_from_update_state(

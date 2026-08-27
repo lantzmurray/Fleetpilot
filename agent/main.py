@@ -81,6 +81,45 @@ def validated_actions(actions: list, known_devices: set, journal=None,
     return clean
 
 
+def ground_action_scopes(actions: list[dict], alerts: list[dict],
+                         journal=None) -> list[dict]:
+    """Expand model targets only from active incident evidence.
+
+    This happens before policy evaluation so the gate always sees the exact
+    scope the executor will receive. The executor never expands on its own.
+    """
+    grounded: list[dict] = []
+    for action in actions:
+        if action["kind"] != "clear_stuck_job":
+            grounded.append(action)
+            continue
+        requested = sorted(set(action.get("devices", [])))
+        suspect_servers = {
+            alert.get("server") for alert in alerts
+            if alert.get("symptom") == "job_stuck"
+            and alert.get("suspected_blocker")
+            and alert.get("device") in requested
+        }
+        if not suspect_servers:
+            grounded.append(action)
+            continue
+        effective = sorted({
+            alert["device"] for alert in alerts
+            if alert.get("symptom") == "job_stuck"
+            and alert.get("server") in suspect_servers
+        })
+        expanded = {**action, "devices": effective}
+        if effective != requested and journal:
+            journal.log("action_scope_grounded", {
+                "kind": action["kind"],
+                "requested_devices": requested,
+                "effective_devices": effective,
+                "basis": "active job_stuck incident on suspect job server",
+            })
+        grounded.append(expanded)
+    return grounded
+
+
 def run_tick(sim: FleetSimulator, policy: PolicyEngine, journal: Journal) -> dict:
     """One agent cycle: observe -> correlate -> propose -> gate -> act/journal."""
     alerts = sim.active_alerts()
@@ -91,6 +130,8 @@ def run_tick(sim: FleetSimulator, policy: PolicyEngine, journal: Journal) -> dic
     diagnosis.proposed_actions = validated_actions(
         diagnosis.proposed_actions, known, journal,
         enforce_device_limit=diagnosis.source != "heuristic")
+    diagnosis.proposed_actions = ground_action_scopes(
+        diagnosis.proposed_actions, alerts, journal)
     confidence = min(max(diagnosis.confidence or 0.0, 0.0), 1.0)
     journal.log("diagnose", {
         "root_cause": diagnosis.root_cause,
