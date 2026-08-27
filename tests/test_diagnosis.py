@@ -66,11 +66,13 @@ def test_default_model_uses_the_live_verified_contest_primary(monkeypatch):
 def test_queue_alerts_collapse_to_one_server_level_remediation():
     result = heuristic_diagnose(queue_alerts())
 
-    assert "job_stuck" in result.root_cause
+    assert "spooler" in result.root_cause
+    assert "22 queues" in result.root_cause
+    assert "JOB-78421" in result.root_cause
     assert "30 of 30" in result.root_cause
     assert result.confidence == 1.0
     assert len(result.proposed_actions) == 1
-    assert result.proposed_actions[0]["kind"] == "restart_queue"
+    assert result.proposed_actions[0]["kind"] == "clear_stuck_job"
     assert len(result.proposed_actions[0]["devices"]) == 30
 
 
@@ -130,6 +132,7 @@ def test_gemini_request_is_compact_and_uses_demo_latency_controls(monkeypatch):
     contents, config = models.requests_seen[0]
     assert len(contents) < 3500
     assert '"alert_count":30' in contents
+    assert '"suspect_job"' in contents
     assert "'severity':" not in contents
     # generous cap: thinking tokens count against it; 1024 truncated JSON
     assert config.max_output_tokens >= 4096

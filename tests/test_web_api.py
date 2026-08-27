@@ -29,6 +29,20 @@ def test_approval_cost_is_html_escaped_before_inner_html_rendering():
     assert "esc(p.action.cost_usd)" in index
 
 
+def test_dashboard_contract_surfaces_job_device_and_network_evidence():
+    index = (Path(__file__).parents[1] / "web/static/index.html").read_text()
+
+    assert "Print operations control" in index
+    assert "Incident evidence" in index
+    assert "Job title" in index
+    assert "Account" in index
+    assert "Serial" in index
+    assert "Current → target" in index
+    assert "Reachability" in index
+    assert "Last poll" in index
+    assert "synthetic records" in index
+
+
 def test_new_run_starts_clean_and_preserves_prior_audit_history(api_client):
     first = api_client.post("/api/scenario/firmware_push_freezes").json()
     first_run = first["run_id"]
@@ -79,9 +93,19 @@ def test_queue_hang_is_a_deterministic_complete_workflow(api_client):
     assert body["pending_approvals"] == []
     assert body["last_summary"]["diagnosis_source"] == "heuristic"
     assert "30 of 30" in body["last_summary"]["root_cause"]
+    assert "22 queues" in body["last_summary"]["root_cause"]
+    evidence = body["evidence"]
+    assert evidence["scenario"] == "queue_hang"
+    assert len(evidence["print_jobs"]) == 30
+    assert len(evidence["devices"]) == 30
+    assert evidence["network"]["reachable"] == 30
+    suspect = next(job for job in evidence["print_jobs"]
+                   if job["suspected_blocker"])
+    assert suspect["job_id"] == "JOB-78421"
+    assert suspect["status"] == "quarantined"
     executed = body["last_summary"]["executed"]
     assert len(executed) == 1
-    assert executed[0][0]["kind"] == "restart_queue"
+    assert executed[0][0]["kind"] == "clear_stuck_job"
     assert executed[0][1]["alerts_cleared"] == 30
     assert [event["kind"] for event in body["journal"]] == [
         "run_started", "observe", "diagnose", "gate", "cycle_complete",
@@ -100,6 +124,17 @@ def test_frozen_firmware_flow_uses_only_a_pilot_then_aborts(api_client):
     assert approval["action"]["kind"] == "update_firmware"
     assert len(approval["action"]["devices"]) >= 5
     assert "approval" in approval["reason"]
+    records = before["evidence"]["devices"]
+    assert len(records) == 30
+    assert all(record["serial_number"] and record["ip_address"]
+               for record in records)
+    assert all(record["current_firmware"] != record["target_firmware"]
+               for record in records)
+    assert before["evidence"]["network"] == {
+        "scope": 30,
+        "reachable": 30,
+        "unreachable": 0,
+    }
 
     approved = api_client.post(f"/api/approve/{approval['id']}")
 
@@ -118,6 +153,12 @@ def test_frozen_firmware_flow_uses_only_a_pilot_then_aborts(api_client):
         before["fleet"]["alerts_open"] - report["pilot_completed"]
     )
     assert after["pending_approvals"] == []
+    by_id = {record["device_id"]: record
+             for record in after["evidence"]["devices"]}
+    assert all(by_id[device]["update_status"] == "quarantined"
+               for device in report["hung"])
+    assert all(by_id[device]["communication_status"] == "reachable"
+               for device in report["hung"])
     pilot_events = [event for event in after["journal"]
                     if event["kind"] == "rollout_pilot"]
     assert len(pilot_events) == 1
