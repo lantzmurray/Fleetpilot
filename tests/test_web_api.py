@@ -97,6 +97,45 @@ def test_invalid_browser_session_id_is_rejected(api_client):
     assert response.json()["detail"] == "invalid browser session id"
 
 
+def test_health_reports_the_calling_browser_run(api_client):
+    operator_a = {
+        "X-FleetPilot-Session": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    }
+    operator_b = {
+        "X-FleetPilot-Session": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    }
+
+    api_client.post("/api/scenario/queue_hang", headers=operator_a)
+
+    health_a = api_client.get("/health", headers=operator_a).json()
+    health_b = api_client.get("/health", headers=operator_b).json()
+
+    assert health_a["diagnosis_source"] == "heuristic"
+    assert health_b["diagnosis_source"] is None
+
+
+def test_session_capacity_preserves_active_runs_instead_of_evicting(
+        api_client, monkeypatch):
+    operator_a = {
+        "X-FleetPilot-Session": "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa"
+    }
+    operator_b = {
+        "X-FleetPilot-Session": "bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb"
+    }
+    monkeypatch.setattr(web_app, "MAX_BROWSER_SESSIONS", 1)
+
+    first = api_client.post(
+        "/api/scenario/firmware_push_freezes", headers=operator_a
+    ).json()
+    refused = api_client.get("/api/state", headers=operator_b)
+    first_after = api_client.get("/api/state", headers=operator_a).json()
+
+    assert refused.status_code == 503
+    assert refused.json()["detail"] == "browser session capacity reached"
+    assert first_after["run_id"] == first["run_id"]
+    assert first_after["pending_approvals"]
+
+
 def test_new_run_starts_clean_and_preserves_prior_audit_history(api_client):
     first = api_client.post("/api/scenario/firmware_push_freezes").json()
     first_run = first["run_id"]
