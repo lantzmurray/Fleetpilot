@@ -50,6 +50,51 @@ def test_dashboard_contract_surfaces_job_device_and_network_evidence():
     assert "SAFE ABORT CONFIRMED · SIMULATOR" in index
     assert "No external fleet polling" in index
     assert "external_system_verified" in index
+    assert "X-FleetPilot-Session" in index
+    assert "crypto.randomUUID" in index
+
+
+def test_browser_sessions_cannot_read_overwrite_or_approve_each_other(
+        api_client):
+    operator_a = {
+        "X-FleetPilot-Session": "11111111-1111-4111-8111-111111111111"
+    }
+    operator_b = {
+        "X-FleetPilot-Session": "22222222-2222-4222-8222-222222222222"
+    }
+
+    first = api_client.post(
+        "/api/scenario/firmware_push_freezes", headers=operator_a
+    ).json()
+    approval_id = first["pending_approvals"][0]["id"]
+
+    second_initial = api_client.get("/api/state", headers=operator_b).json()
+    assert second_initial["run_id"] is None
+    assert second_initial["fleet"]["alerts_open"] == 0
+    assert second_initial["pending_approvals"] == []
+
+    cross_approval = api_client.post(
+        f"/api/approve/{approval_id}", headers=operator_b
+    )
+    assert cross_approval.status_code == 404
+
+    second = api_client.post(
+        "/api/scenario/queue_hang", headers=operator_b
+    ).json()
+    first_after = api_client.get("/api/state", headers=operator_a).json()
+
+    assert second["run_id"] != first["run_id"]
+    assert first_after["run_id"] == first["run_id"]
+    assert first_after["pending_approvals"][0]["id"] == approval_id
+
+
+def test_invalid_browser_session_id_is_rejected(api_client):
+    response = api_client.get(
+        "/api/state", headers={"X-FleetPilot-Session": "not-a-uuid"}
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "invalid browser session id"
 
 
 def test_new_run_starts_clean_and_preserves_prior_audit_history(api_client):
