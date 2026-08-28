@@ -166,7 +166,7 @@
       <div id="rca" class="empty">Choose a scenario to start a new run.</div>
     </div>
     <div>
-      <div id="rollout"></div>
+      <div id="outcome-verification"></div>
       <div class="panel">
         <h2>Decision gate</h2>
         <div id="approvals" class="empty">No action awaiting approval.</div>
@@ -215,6 +215,7 @@ function render(s) {
     `<span>runtime <b>${esc(h.deployment || 'local')}</b></span>` +
     (src ? `<span>RCA <b class="${src === 'heuristic' ? 'fallback' : 'live'}">${
       esc(src === 'heuristic' ? 'deterministic fallback' : `${src} live`)}</b></span>` : '') +
+    (h.revision ? `<span>revision <b>${esc(h.revision)}</b></span>` : '') +
     (h.fallback_reason ? `<span>fallback <b class="fallback">${esc(h.fallback_reason)}</b></span>` : '');
 
   const sum = s.last_summary || {};
@@ -226,7 +227,7 @@ function render(s) {
        <div class="meta">confidence ${esc(sum.confidence)} · ${esc(sum.diagnosis_source)}</div>
        <div class="outcome">
          <span class="chip good">${executed.length} executed</span>
-         <span class="chip warn">${escalated.length} approval</span>
+         <span class="chip warn">${escalated.length} gated</span>
          <span class="chip bad">${blocked.length} blocked</span>
        </div></div>`
     : '<span class="empty">Choose a scenario to start a new run.</span>';
@@ -250,7 +251,7 @@ function render(s) {
          </div></div>`).join('')
     : '<span class="empty">No action awaiting approval.</span>';
 
-  $('rollout').innerHTML = s.rollout_report ? rolloutCard(s.rollout_report) : '';
+  $('outcome-verification').innerHTML = outcomeCard(s);
   renderEvidence(s.evidence || {});
   $('journal').innerHTML = s.journal.length ? s.journal.map(e =>
     `<div><span class="kind">[${esc(e.kind)}]</span> ${summ(e)}</div>`).join('')
@@ -268,7 +269,7 @@ function renderEvidence(e) {
       <thead><tr><th>Signal</th><th>Job title</th><th>Account</th><th>Printer / queue</th><th>Workload</th><th>Status</th></tr></thead>
       <tbody>${jobs.map(job => `<tr class="${job.suspected_blocker ? 'suspect' : ''}">
         <td><span class="status ${job.suspected_blocker ? 'blocking' : ''}">${
-          job.suspected_blocker ? 'suspect' : 'waiting'}</span><div class="secondary mono">${esc(job.job_id)}</div></td>
+          job.suspected_blocker ? 'suspect' : 'linked'}</span><div class="secondary mono">${esc(job.job_id)}</div></td>
         <td><div class="primary-line">${esc(job.document_name)}</div><div class="secondary">${esc(job.department)}</div></td>
         <td><div class="primary-line mono">${esc(job.owner_account)}</div><div class="secondary mono">${esc(job.account_code)}</div></td>
         <td><div class="primary-line mono">${esc(job.device_id)} · ${esc(job.queue)}</div><div class="secondary mono">${esc(job.server)}</div></td>
@@ -300,17 +301,32 @@ function renderEvidence(e) {
   $('evidence').innerHTML = '<span class="empty">Run Queue hang or Guarded firmware rollout.</span>';
 }
 
-function rolloutCard(r) {
+function outcomeCard(s) {
+  const r = s.rollout_report;
+  if (!r) {
+    const v = (s.last_summary || {}).verification || {};
+    if (v.status !== 'resolved' && v.status !== 'unresolved') return '';
+    return `<div class="panel rollout ${v.status === 'resolved' ? 'clean' : 'aborted'}">
+      <h2>Outcome verification</h2>
+      <h3>${v.status === 'resolved' ? 'SIMULATOR OUTCOME VERIFIED' : 'UNRESOLVED · TARGETED ALERTS REMAIN'}</h3>
+      <div class="mini-grid">
+        <span>alerts</span><span>${esc(v.alerts_before)} → ${esc(v.alerts_after)}</span>
+        <span>actions checked</span><span>${esc(v.actions_checked)}</span>
+        <span>matching alerts</span><span>${esc(v.matching_alerts_remaining)}</span>
+      </div><div class="secondary">No external fleet polling · ${esc(v.basis || 'synthetic simulator post-state')} · external_system_verified=${esc(v.external_system_verified)}</div></div>`;
+  }
+  const v = r.verification || {};
   const aborted = r.outcome === 'aborted';
   return `<div class="panel rollout ${aborted ? 'aborted' : 'clean'}">
-    <h3>${aborted ? 'ROLLOUT ABORTED · WATCHDOG TIMEOUT' : 'PILOT VERIFIED · EXPANSION GATED'}</h3>
+    <h2>Outcome verification</h2>
+    <h3>${aborted ? 'SAFE ABORT CONFIRMED · SIMULATOR' : 'PILOT VERIFIED · EXPANSION GATED'}</h3>
     <div class="mini-grid">
       <span>pilot</span><span>${esc(r.pilot_size)} printers</span>
-      <span>completed</span><span>${esc(r.pilot_completed)}</span>
-      <span>quarantined</span><span>${esc((r.quarantined || []).length)}</span>
-      <span>fleet untouched</span><span>${esc(r.fleet_untouched)}</span>
-      <span>watchdog checks</span><span>${esc(r.watchdog_checks)}</span>
-    </div></div>`;
+      <span>compliant</span><span>${esc(v.completed_compliant ?? r.pilot_completed)}</span>
+      <span>quarantined</span><span>${esc(v.quarantined_noncompliant ?? (r.quarantined || []).length)}</span>
+      <span>fleet untouched</span><span>${esc(v.remainder_untouched ?? r.fleet_untouched)}</span>
+      <span>expansion</span><span>${v.expansion_started ? 'started' : 'not started'}</span>
+    </div><div class="secondary">No external fleet polling · ${esc(v.basis || 'synthetic simulator post-state')} · external_system_verified=${esc(v.external_system_verified)}</div></div>`;
 }
 
 function shortTime(value) {
@@ -323,6 +339,7 @@ function summ(e) {
   if (e.kind === 'gate') return `${esc(p.action.kind)} → ${esc(p.decision)} (${esc(p.reason)})`;
   if (e.kind === 'human_decision') return `${esc(p.action.kind)} → ${esc(p.decision)}`;
   if (e.kind === 'observe') return `${esc(p.alert_count)} alerts observed`;
+  if (e.kind === 'verify') return `${esc(p.status)} · ${esc(p.alerts_before)} → ${esc(p.alerts_after)} alerts`;
   if (e.kind === 'cycle_complete') return `${esc(p.executed.length)} executed, ${esc(p.escalated.length)} escalated, ${esc(p.blocked.length)} blocked`;
   if (e.kind === 'rollout_pilot') return `pilot completed on ${esc((p.result && p.result.completed || []).length)} printers`;
   if (e.kind === 'watchdog') return `check ${esc(p.check)} · ${esc((p.still_hung || []).length)} still hung`;

@@ -168,7 +168,15 @@ def main() -> int:
     # Evals are deterministic safety evidence, never a billable/networked run.
     credentials = {
         name: os.environ.pop(name, None)
-        for name in ("GEMINI_API_KEY", "LLM_API_KEY")
+        for name in (
+            "GEMINI_API_KEY",
+            "LLM_API_KEY",
+            "GLM_API_KEY",
+            "LLM_BACKEND",
+            "GEMINI_BACKEND",
+            "GCP_PROJECT_ID",
+            "GOOGLE_CLOUD_PROJECT",
+        )
     }
     try:
         results = [scenario() for scenario in SCENARIOS]

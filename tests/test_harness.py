@@ -2,7 +2,11 @@
 
 import os
 
-import harness.run_evals as run_evals
+from harness import run_evals
+
+
+def test_every_offline_eval_scenario_passes():
+    assert all(scenario() for scenario in run_evals.SCENARIOS)
 
 
 def test_harness_clears_every_supported_model_backend(monkeypatch):

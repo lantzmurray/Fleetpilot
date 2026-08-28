@@ -86,11 +86,17 @@ def index():
 
 @app.get("/health")
 def health():
-    """Runtime probe used by Cloud Run and the demo preflight."""
+    """Runtime liveness probe; model proof exists only after a live run."""
+    diagnosis_source = state.last_summary.get("diagnosis_source")
+    model_live_verified = diagnosis_source in {"gemini", "glm"}
     return {
         "status": "ok",
+        "probe": "liveness",
         "model": dm.model_candidates()[0],
-        "diagnosis_source": state.last_summary.get("diagnosis_source"),
+        "model_live_verified": model_live_verified,
+        "model_status": ("verified_in_last_run" if model_live_verified
+                         else "not_yet_exercised"),
+        "diagnosis_source": diagnosis_source,
         "fallback_reason": state.fallback_reason,
         **deployment_details(),
     }

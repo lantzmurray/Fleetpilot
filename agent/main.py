@@ -24,6 +24,12 @@ def validated_actions(actions: list, known_devices: set, journal=None,
     clean = []
     for a in actions:
         if not isinstance(a, dict):
+            if journal:
+                journal.log(
+                    "llm_output_rejected",
+                    {"reason": "action is not an object",
+                     "received_type": type(a).__name__},
+                )
             continue
         kind = a.get("kind")
         if not isinstance(kind, str):
@@ -54,6 +60,20 @@ def validated_actions(actions: list, known_devices: set, journal=None,
             continue
         devices = [d for d in requested_devices
                    if isinstance(d, str) and d in known_devices]
+        removed_devices = [
+            device if isinstance(device, str) else repr(device)
+            for device in requested_devices
+            if not isinstance(device, str) or device not in known_devices
+        ]
+        if removed_devices and devices and journal:
+            journal.log(
+                "llm_output_narrowed",
+                {
+                    "kind": kind,
+                    "removed_device_ids": removed_devices,
+                    "reason": "unknown device ids removed before policy",
+                },
+            )
         if requested_devices and not devices:
             if journal:
                 journal.log("llm_output_rejected",
@@ -120,8 +140,61 @@ def ground_action_scopes(actions: list[dict], alerts: list[dict],
     return grounded
 
 
+def verify_action_outcome(sim: FleetSimulator, action: dict, result: dict,
+                          alerts_before: list[dict]) -> dict:
+    """Re-observe the simulator after execution and verify scoped outcomes.
+
+    Alert-clearing actions are verified against their exact policy-reviewed
+    device scope and expected symptoms. Actions without an alert-resolution
+    contract retain an execution receipt without claiming resolution.
+    """
+    current_alerts = sim.active_alerts()
+    symptoms = sim.RESOLVES.get(action["kind"], set())
+    devices = set(action.get("devices", []))
+    expected_to_clear = [
+        alert for alert in alerts_before
+        if alert.get("device") in devices and alert.get("symptom") in symptoms
+    ]
+    protected_alerts = [
+        alert for alert in alerts_before if alert not in expected_to_clear
+    ]
+    matching_remaining = sum(
+        alert.get("device") in devices and alert.get("symptom") in symptoms
+        for alert in current_alerts
+    )
+    unmatched_current = list(current_alerts)
+    unexpected_alerts_cleared = 0
+    for alert in protected_alerts:
+        if alert in unmatched_current:
+            unmatched_current.remove(alert)
+        else:
+            unexpected_alerts_cleared += 1
+    if symptoms:
+        status = (
+            "resolved"
+            if matching_remaining == 0 and unexpected_alerts_cleared == 0
+            else "unresolved"
+        )
+    else:
+        status = "receipt_recorded"
+    return {
+        "status": status,
+        "action_kind": action["kind"],
+        "devices_checked": len(devices),
+        "alerts_before": len(alerts_before),
+        "alerts_after": len(current_alerts),
+        "alerts_cleared": len(alerts_before) - len(current_alerts),
+        "executor_reported_alerts_cleared": result.get(
+            "alerts_cleared", 0),
+        "matching_alerts_remaining": matching_remaining,
+        "unexpected_alerts_cleared": unexpected_alerts_cleared,
+        "basis": "synthetic_simulator_post_state",
+        "external_system_verified": False,
+    }
+
+
 def run_tick(sim: FleetSimulator, policy: PolicyEngine, journal: Journal) -> dict:
-    """One agent cycle: observe -> correlate -> propose -> gate -> act/journal."""
+    """One cycle: observe -> correlate -> propose -> gate -> act -> verify."""
     alerts = sim.active_alerts()
     journal.log("observe", {"alert_count": len(alerts), "alerts": alerts})
 
@@ -141,25 +214,66 @@ def run_tick(sim: FleetSimulator, policy: PolicyEngine, journal: Journal) -> dic
         "proposed_actions": diagnosis.proposed_actions,
     })
 
-    executed, blocked, escalated = [], [], []
+    executed, blocked, escalated, verification_checks = [], [], [], []
     for action in diagnosis.proposed_actions:
         decision = policy.evaluate(action)
         journal.log("gate", {"action": action,
                              "decision": decision.risk.value,
                              "reason": decision.reason})
         if decision.risk is Risk.AUTO:
+            alerts_before_action = list(sim.active_alerts())
             result = sim.execute(action)
             executed.append((action, result))
+            journal.log("action_result", {"action": action, "result": result})
+            check = verify_action_outcome(
+                sim, action, result, alerts_before_action)
+            verification_checks.append(check)
+            journal.log("verify", check)
         elif decision.risk is Risk.HUMAN:
             # approval inbox: action + the policy reason it was gated
             escalated.append({"action": action, "reason": decision.reason})
         else:
             blocked.append((action, decision.reason))
 
+    resolving_checks = [check for check in verification_checks
+                        if check["status"] != "receipt_recorded"]
+    if any(check["status"] == "unresolved" for check in resolving_checks):
+        verification_status = "unresolved"
+    elif resolving_checks:
+        verification_status = "resolved"
+    elif verification_checks:
+        verification_status = "receipt_recorded"
+    elif escalated:
+        verification_status = "awaiting_action"
+    else:
+        verification_status = "not_run"
+    current_alert_count = len(sim.active_alerts())
+    verification = {
+        "status": verification_status,
+        "basis": "synthetic_simulator_post_state",
+        "external_system_verified": False,
+        "actions_checked": len(verification_checks),
+        "alerts_before": len(alerts),
+        "alerts_after": current_alert_count,
+        "alerts_cleared": len(alerts) - current_alert_count,
+        "executor_reported_alerts_cleared": sum(
+            check["executor_reported_alerts_cleared"]
+            for check in verification_checks
+        ),
+        "matching_alerts_remaining": sum(
+            check["matching_alerts_remaining"]
+            for check in resolving_checks
+        ),
+        "unexpected_alerts_cleared": sum(
+            check["unexpected_alerts_cleared"]
+            for check in verification_checks
+        ),
+    }
     summary = {"root_cause": diagnosis.root_cause,
                "confidence": confidence,
                "diagnosis_source": diagnosis.source,
-               "executed": executed, "escalated": escalated, "blocked": blocked}
+               "executed": executed, "escalated": escalated,
+               "blocked": blocked, "verification": verification}
     journal.log("cycle_complete", summary)
     return summary
 
