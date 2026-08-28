@@ -386,6 +386,34 @@ def test_malformed_model_action_fields_are_rejected_without_exceptions(
     ]
 
 
+def test_every_dropped_or_narrowed_model_action_is_audited(memory_journal):
+    from agent.main import validated_actions
+
+    clean = validated_actions([
+        "not an action object",
+        {
+            "kind": "restart_queue",
+            "devices": ["DEV-0001", "GHOST-0001"],
+            "rationale": "restart only the known printer queue",
+        },
+    ], {"DEV-0001"}, memory_journal)
+
+    assert clean == [{
+        "kind": "restart_queue",
+        "devices": ["DEV-0001"],
+        "rationale": "restart only the known printer queue",
+    }]
+    events = memory_journal.replay()
+    assert events[0]["kind"] == "llm_output_rejected"
+    assert events[0]["payload"]["reason"] == "action is not an object"
+    assert events[1]["kind"] == "llm_output_narrowed"
+    assert events[1]["payload"] == {
+        "kind": "restart_queue",
+        "removed_device_ids": ["GHOST-0001"],
+        "reason": "unknown device ids removed before policy",
+    }
+
+
 def test_glm_backend_parses_and_falls_back(monkeypatch):
     """LLM_BACKEND=glm: valid JSON is used, failures degrade to heuristic."""
     import agent.diagnosis as d
