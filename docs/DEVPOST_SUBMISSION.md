@@ -88,12 +88,14 @@ customer, vendor, or physical-device data is connected.
 
 ## POC boundaries
 
-The public build is an unauthenticated, single-operator synthetic sandbox.
-Its in-process state and SQLite-on-Cloud-Run journal are not production
-durability or tenancy. The verifier reads simulator state; it does not claim
-physical-printer or external management-server confirmation. Production
-adapters would add authenticated sessions, a durable audit store, and real
-vendor/SNMP/HTTPS integrations.
+The public build is an unauthenticated synthetic sandbox. Browser-session state
+prevents one visitor from reading, overwriting, or approving another visitor's
+run inside a single instance, but it is not authentication, durable state, or
+cross-instance production tenancy. SQLite on Cloud Run is not a durable audit
+store. The verifier reads simulator state; it does not claim physical-printer
+or external management-server confirmation. Production adapters would add
+authenticated sessions, a durable audit store, and real vendor/SNMP/HTTPS
+integrations.
 
 ## Links
 

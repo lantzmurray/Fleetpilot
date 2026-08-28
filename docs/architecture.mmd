@@ -1,6 +1,7 @@
 flowchart LR
     Operator["Fleet operator"] --> UI["FastAPI dashboard<br/>deployed on Cloud Run"]
-    UI --> Evidence["Synthetic incident evidence<br/>jobs, printers, queues, servers"]
+    UI --> Session["Bounded browser-session state<br/>in-process · ephemeral"]
+    Session --> Evidence["Synthetic incident evidence<br/>jobs, printers, queues, servers"]
     Evidence --> Correlator["Deterministic topology correlator"]
     Correlator --> Gemini["Vertex AI · Gemini 3.5+<br/>Google GenAI SDK<br/>service-account auth"]
 

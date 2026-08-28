@@ -39,10 +39,12 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 - Deterministic policy: allowlist, denylist, action cap, blast-radius gate, purchase cap, and notification cooldown.
 - Staged firmware rollout: five-device pilot, watchdog, abort, quarantine, and no automatic fleet-wide expansion.
 - Gemini timeout guard degrades to the heuristic path instead of hanging indefinitely.
-- Offline harness passes **11/11 scenarios**; pytest passes **45/45** at **91.90% coverage**.
+- Offline harness passes **11/11 scenarios**; pytest passes **49/49** at **92.32% coverage**.
 - Post-action verification re-observes simulator state, detects unresolved
   targeted alerts and collateral clearing, and explicitly reports that no
   external system was verified.
+- Browser-session state prevents a new visitor from inheriting or approving a
+  different visitor's run while retaining a headerless rehearsal/API path.
 - A fresh virtual environment completes the README eval, CLI, and web quickstart.
 - The full API sequence passes five consecutive local runs with isolated run IDs.
 - The real browser path proves queue remediation plus the guarded 5-device abort.

@@ -132,7 +132,7 @@
       <div class="eyebrow">Print operations control</div>
       <h1>FleetPilot <span>evidence-led response for enterprise printer fleets</span></h1>
     </div>
-    <div class="sandbox">synthetic records · simulator only · no device connections</div>
+    <div class="sandbox">synthetic records · session-isolated POC · no device connections</div>
   </header>
 
   <section class="kpis" aria-label="Fleet status">
@@ -200,6 +200,15 @@
 <script>
 const $ = id => document.getElementById(id);
 let busy = false;
+const SESSION_STORAGE_KEY = 'fleetpilot.browser_session';
+let browserSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
+if (!browserSession) {
+  browserSession = crypto.randomUUID();
+  sessionStorage.setItem(SESSION_STORAGE_KEY, browserSession);
+}
+const sessionHeaders = Object.freeze({
+  'X-FleetPilot-Session': browserSession
+});
 
 function render(s) {
   $('s-devices').textContent = s.fleet.devices;
@@ -366,19 +375,25 @@ async function guard(fn) {
 }
 async function run(name) {
   await guard(async () => {
-    const response = await fetch(`/api/scenario/${name}`, {method:'POST'});
+    const response = await fetch(`/api/scenario/${name}`, {
+      method:'POST', headers:sessionHeaders
+    });
     render(await responseJson(response));
   });
 }
 async function decide(id, action) {
   await guard(async () => {
-    const response = await fetch(`/api/${action}/${id}`, {method:'POST'});
+    const response = await fetch(`/api/${action}/${id}`, {
+      method:'POST', headers:sessionHeaders
+    });
     render(await responseJson(response));
   });
 }
 async function reset() {
   await guard(async () => {
-    const response = await fetch('/api/reset', {method:'POST'});
+    const response = await fetch('/api/reset', {
+      method:'POST', headers:sessionHeaders
+    });
     render(await responseJson(response));
   });
 }
@@ -387,7 +402,8 @@ async function responseJson(response) {
   if (!response.ok) throw new Error(body.detail || `request failed (${response.status})`);
   return body;
 }
-fetch('/api/state').then(responseJson).then(render).catch(console.error);
+fetch('/api/state', {headers:sessionHeaders})
+  .then(responseJson).then(render).catch(console.error);
 </script>
 </body>
 </html>

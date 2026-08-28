@@ -97,7 +97,7 @@ the Fortified Enterprise Fleet track.
 | --- | --- |
 | Operational utility (40%) | 30 queue alerts collapse to one grounded incident; one bounded action quarantines the suspect job and releases the 29-job backlog. |
 | Architecture (30%) | Gemini proposes only; deterministic validation, scope grounding, policy, approval, pilot, watchdog, and post-state verification control execution. |
-| Demo readiness (30%) | Public Cloud Run UI, visible Gemini source/revision, two short workflows, reproducible setup, 45 passing tests, 11/11 offline evals. |
+| Demo readiness (30%) | Public Cloud Run UI, visible Gemini source/revision, two short workflows, reproducible setup, 49 passing tests, 11/11 offline evals. |
 
 ## Deploy to Google Cloud Run
 The verified deployment uses Vertex AI and the Cloud Run service account; no
@@ -109,7 +109,7 @@ gcloud run deploy fleetpilot \
   --set-env-vars GEMINI_BACKEND=vertex,GCP_PROJECT_ID=<YOUR_PROJECT_ID>,GCP_REGION=global \
   --allow-unauthenticated
 ```
-`--allow-unauthenticated` is for this synthetic, single-operator contest sandbox;
+`--allow-unauthenticated` is for this synthetic contest sandbox;
 do not use this deployment shape for a real fleet or multi-user environment.
 
 ## Safety & evals
@@ -121,8 +121,9 @@ proves each guard fires; the harness explicitly clears every supported live
 model backend and credential before running.
 
 ## POC boundaries
-- The public deployment is a synthetic, single-operator demo with shared
-  in-process state; it is not authenticated or safe for concurrent fleet use.
+- The public deployment separates browser sessions inside one process, so a
+  visitor starts clean and cannot approve another visitor's run. This is not
+  authentication, durable state, or cross-instance production tenancy.
 - SQLite on the Cloud Run filesystem is POC evidence, not durable production
   storage. A production adapter would use authenticated operators and a
   durable audit store.
@@ -135,7 +136,7 @@ model backend and credential before running.
 <https://fleetpilot-118750462659.us-central1.run.app>
 (`gemini-3.5-flash` @ Vertex, service-account auth); the active revision is
 shown by the dashboard and `/health`. The current repository passes 11/11
-offline eval scenarios and 45/45 pytest cases at 91.90% coverage. Both locked
+offline eval scenarios and 49/49 pytest cases at 92.32% coverage. Both locked
 workflows previously passed browser QA with zero console errors, and three
 consecutive hosted rehearsal runs
 (`scripts/rehearse_hosted.py`) completed both workflows with

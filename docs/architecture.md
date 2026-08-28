@@ -3,7 +3,8 @@
 ```mermaid
 flowchart LR
     Operator["Fleet operator"] --> UI["FastAPI dashboard<br/>deployed on Cloud Run"]
-    UI --> Evidence["Synthetic incident evidence<br/>jobs, printers, queues, servers"]
+    UI --> Session["Bounded browser-session state<br/>in-process · ephemeral"]
+    Session --> Evidence["Synthetic incident evidence<br/>jobs, printers, queues, servers"]
     Evidence --> Correlator["Deterministic topology correlator"]
     Correlator --> Gemini["Vertex AI · Gemini 3.5+<br/>Google GenAI SDK<br/>service-account auth"]
 
@@ -43,8 +44,8 @@ data and actions in the contest build are synthetic.
 
 ## Shipped POC limits
 
-- The hosted dashboard is unauthenticated, single-operator, and backed by
-  shared in-process state.
+- The hosted dashboard is unauthenticated. Browser-session state isolates
+  visitors within one process, but it is not durable or cross-instance tenancy.
 - The SQLite journal is useful for the demo but is not durable on the Cloud Run
   filesystem and is not a production audit store.
 - Real vendor APIs, SNMP/HTTPS polling, authenticated operator sessions, a
