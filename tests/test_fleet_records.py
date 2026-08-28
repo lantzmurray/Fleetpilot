@@ -53,6 +53,39 @@ def test_queue_incident_is_thirty_jobs_across_twenty_two_queues():
     assert sum(alert["suspected_blocker"] for alert in sim.active_alerts()) == 1
 
 
+def test_queue_registry_marks_22_pull_release_queues_stalled_under_queue_hang():
+    sim = FleetSimulator.seed()
+    before = sim.queue_records()
+    assert [q for q in before if q["status"] == "stalled"] == []
+    pull = [q for q in before if q["queue_type"] == "pull_release"]
+    assert pull and all(q["server"] == "srv-east-1" for q in pull)
+    assert all(q["protocol"].startswith("PrintVault") for q in pull)
+
+    sim.inject_scenario("queue_hang")
+
+    stalled = [q for q in sim.queue_records() if q["status"] == "stalled"]
+    assert len(stalled) == 22
+    assert all(q["queue_type"] == "pull_release" for q in stalled)
+    assert all(q["pending_jobs"] > 0 for q in stalled)
+    direct = [q for q in sim.queue_records() if q["queue_type"] == "direct"]
+    assert all(q["status"] == "running" for q in direct)
+
+
+def test_inventory_carries_hostname_contact_and_live_status_fields():
+    sim = FleetSimulator.seed()
+
+    records = sim.inventory_records()
+
+    assert len({record["hostname"] for record in records}) == 200
+    assert all(record["hostname"].endswith(".fleet.mps.example.invalid")
+               for record in records)
+    assert all(record["contact_name"] and record["contact_phone"]
+               for record in records)
+    assert all(record["printer_status"] for record in records)
+    assert all(record["last_status_at"].startswith("20")
+               for record in records)
+
+
 def test_network_alert_evidence_matches_device_reachability_and_server():
     sim = FleetSimulator.seed()
     sim.inject_scenario("alert_storm")

@@ -4,9 +4,12 @@ The records are deliberately realistic enough for an operator demo while
 remaining unmistakably fictional: documentation-only IP addresses, locally
 administered MAC addresses, and ``.invalid`` contacts. No device is polled.
 """
+import hashlib
 import random
+from collections import Counter
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field, replace
+from datetime import datetime, timedelta, timezone
 from typing import ClassVar
 
 
@@ -25,7 +28,11 @@ class Device:
     site: str
     address: str
     point_of_contact: str
-    last_poll_age_seconds: int
+    hostname: str = ""
+    contact_name: str = ""
+    contact_phone: str = ""
+    printer_status: str = "Ready"
+    last_poll_age_seconds: int = 60
     communication_status: str = "reachable"
     management_channel: str = "SNMPv3 + HTTPS"
     toner_pct: int = 100
@@ -47,6 +54,7 @@ class PrintJob:
     size_mb: float
     datatype: str
     status: str
+    queue_type: str = "direct"
     suspected_blocker: bool = False
     policy_signal: str = "business"
 
@@ -98,6 +106,49 @@ SITE_DETAILS = {
     ),
 }
 
+# Print architecture per server. ``srv-east-1`` hosts the pull-print release
+# service (fictional "PrintVault Secure Release", Equitrac-style): jobs are
+# spooled centrally and only released when a user badges at a device, so one
+# blocked job on the release spooler stalls every release queue behind it.
+# The other servers queue direct IP print jobs per device.
+QUEUE_ARCHITECTURE = {
+    "srv-east-1": {
+        "region": "e1", "prefix": "SR-E1-PR", "type": "pull_release",
+        "protocol": "PrintVault agent (hold/release)", "slot": 40,
+    },
+    "srv-east-2": {
+        "region": "e2", "prefix": "SR-E2-DR", "type": "direct",
+        "protocol": "IPP", "slot": 40,
+    },
+    "srv-west-1": {
+        "region": "w1", "prefix": "SR-W1-DR", "type": "direct",
+        "protocol": "RAW 9100", "slot": 40,
+    },
+    "srv-west-2": {
+        "region": "w2", "prefix": "SR-W2-DR", "type": "direct",
+        "protocol": "IPP", "slot": 40,
+    },
+}
+SITE_CONTACTS = {
+    "srv-east-1": ("Avery Morgan", "+1-919-555-0142"),
+    "srv-east-2": ("Casey Nguyen", "+1-804-555-0178"),
+    "srv-west-1": ("Morgan Patel", "+1-303-555-0119"),
+    "srv-west-2": ("Riley Chen", "+1-602-555-0163"),
+}
+PRINTER_STATUSES = (
+    "Ready", "Ready", "Ready", "Ready", "Ready", "Ready",
+    "Sleep mode", "Printing", "Energy-saver",
+)
+
+
+def queue_name(server: str, index: int) -> str:
+    arch = QUEUE_ARCHITECTURE[server]
+    return f"{arch['prefix']}-{index % arch['slot']:02d}"
+
+
+def queue_type(server: str) -> str:
+    return QUEUE_ARCHITECTURE[server]["type"]
+
 
 @dataclass
 class FleetSimulator:
@@ -119,6 +170,8 @@ class FleetSimulator:
             model, _old_firmware, target_firmware = DEVICE_PROFILES[
                 manufacturer][i % 2]
             site, address, point_of_contact = SITE_DETAILS[server]
+            contact_name, contact_phone = SITE_CONTACTS[server]
+            region = QUEUE_ARCHITECTURE[server]["region"]
             devices.append(Device(
                 device_id=f"DEV-{i:04d}",
                 manufacturer=manufacturer,
@@ -127,13 +180,18 @@ class FleetSimulator:
                 # RFC 5737 TEST-NET-1 is safe for documentation and demos.
                 ip_address=f"192.0.2.{i + 1}",
                 mac_address=f"02:42:00:00:{i // 256:02x}:{i % 256:02x}",
+                hostname=(f"{SERIAL_PREFIX[manufacturer].lower()}-{region}"
+                          f"-{i:04d}.fleet.mps.example.invalid"),
                 server=server,
-                queue=f"Q-{i % 40:02d}",
+                queue=queue_name(server, i),
                 current_firmware=target_firmware,
                 target_firmware=target_firmware,
                 site=site,
                 address=address,
                 point_of_contact=point_of_contact,
+                contact_name=contact_name,
+                contact_phone=contact_phone,
+                printer_status=PRINTER_STATUSES[i % len(PRINTER_STATUSES)],
                 last_poll_age_seconds=18 + (i * 7) % 103,
                 toner_pct=rng.randint(5, 100),
                 paper_pct=rng.randint(10, 100),
@@ -196,6 +254,7 @@ class FleetSimulator:
                 size_mb=1842.6 if suspected else round(0.8 + index * 2.7, 1),
                 datatype="PDF" if suspected or index % 3 else "PCL6",
                 status="blocking" if suspected else "waiting",
+                queue_type="pull_release",
                 suspected_blocker=suspected,
                 policy_signal="review_non_business_content" if suspected else "business",
             )
@@ -302,11 +361,15 @@ class FleetSimulator:
 
     def inventory_records(self, device_ids: Iterable[str] | None = None) -> list[dict]:
         selected = set(device_ids) if device_ids is not None else None
+        now = datetime.now(timezone.utc)
         records = []
         for device in self.devices:
             if selected is not None and device.device_id not in selected:
                 continue
             record = asdict(device)
+            record["last_status_at"] = (
+                now - timedelta(seconds=device.last_poll_age_seconds)
+            ).strftime("%Y-%m-%dT%H:%M:%SZ")
             if device.device_id in self.quarantined:
                 update_status = "quarantined"
             elif device.current_firmware != device.target_firmware:
@@ -315,6 +378,69 @@ class FleetSimulator:
                 update_status = "compliant"
             records.append({**record, "update_status": update_status,
                             "synthetic": True})
+        return records
+
+    def queue_records(self) -> list[dict]:
+        """Live queue registry: one row per (server, queue) with pending
+        job counts; pull-release queues on srv-east-1 show as ``stalled``
+        while the queue-hang scenario holds their jobs."""
+        pending = Counter(
+            (job.server, job.queue) for job in self.print_jobs
+            if job.status in {"blocking", "waiting"})
+        quarantined = Counter(
+            (job.server, job.queue) for job in self.print_jobs
+            if job.status == "quarantined")
+        records = []
+        for server, arch in QUEUE_ARCHITECTURE.items():
+            queues = {device.queue for device in self.devices
+                      if device.server == server}
+            for name in sorted(queues):
+                jobs = pending.get((server, name), 0)
+                stalled = bool(jobs) and self.scenario == "queue_hang"
+                records.append({
+                    "server": server,
+                    "queue": name,
+                    "queue_type": arch["type"],
+                    "protocol": arch["protocol"],
+                    "pending_jobs": jobs,
+                    "quarantined_jobs": quarantined.get((server, name), 0),
+                    "status": "stalled" if stalled else "running",
+                    "synthetic": True,
+                })
+        return records
+
+    def quarantined_jobs(self) -> list[dict]:
+        """Jobs pulled out of service by a resolution — persistent evidence
+        that a quarantine happened, kept after the incident clears."""
+        return [{**asdict(job), "synthetic": True} for job in self.print_jobs
+                if job.status == "quarantined"]
+
+    def firmware_packages(self) -> list[dict]:
+        """Firmware repository: the staged package files a rollout would
+        push. Deterministic synthetic metadata; no file is real."""
+        def synth_sha(seed_text: str) -> str:
+            return hashlib.sha256(seed_text.encode()).hexdigest()[:16]
+
+        records = []
+        for index, (vendor, profiles) in enumerate(
+                DEVICE_PROFILES.items(), start=1):
+            for model, _old, target in profiles:
+                slug = model.lower().replace(" ", "_")
+                ext = {"Xerox": "bx", "Ricoh": "rcf",
+                       "HP": "bdl"}[vendor]
+                records.append({
+                    "package_id": f"FWP-{index:03d}",
+                    "vendor": vendor,
+                    "model_family": model,
+                    "version": target,
+                    "file_name": f"{vendor.lower()}_{slug}_{target}.{ext}",
+                    "size_mb": round(38 + (len(model) * 13.7) % 180, 1),
+                    "sha256": synth_sha(f"{model}-{target}"),
+                    "uploaded_at": "2026-08-15T10:00:00Z",
+                    "signed_by": f"{vendor} Firmware Signing CA",
+                    "status": "Approved",
+                    "synthetic": True,
+                })
         return records
 
     def print_job_records(self) -> list[dict]:

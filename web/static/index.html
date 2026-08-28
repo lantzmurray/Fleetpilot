@@ -10,40 +10,81 @@
     --bg:#080d12; --panel:#111820; --panel-2:#0c131a; --line:#263440;
     --fg:#edf3f7; --dim:#8fa0ad; --green:#57d68d; --amber:#f0b35a;
     --red:#ff6b68; --cyan:#55c7e8; --blue:#6aa9ff;
+    --sidebar:#0b1218; --sidebar-w:216px;
   }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--fg);
     font:14px/1.45 Inter, ui-sans-serif, -apple-system, "Segoe UI", sans-serif; }
   button { font:inherit; }
-  .shell { width:min(1500px, 100%); margin:auto; padding:20px; }
-  .topbar { display:flex; justify-content:space-between; align-items:flex-start;
-    gap:20px; border-bottom:1px solid var(--line); padding-bottom:16px; }
-  .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.14em;
-    font:700 11px/1.2 ui-monospace, monospace; }
-  h1 { margin:4px 0 0; font-size:24px; letter-spacing:-.02em; }
-  h1 span { color:var(--dim); font-size:14px; font-weight:500; margin-left:8px; }
-  .sandbox { border:1px solid var(--amber); color:var(--amber); background:#f0b35a12;
-    border-radius:4px; padding:7px 10px; text-transform:uppercase;
-    letter-spacing:.08em; font:700 10px/1.2 ui-monospace, monospace; }
-  .kpis { display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr));
-    border:1px solid var(--line); border-radius:7px; margin:16px 0; overflow:hidden; }
-  .kpi { background:var(--panel); padding:12px 14px; border-right:1px solid var(--line); }
-  .kpi:last-child { border:0; }
-  .kpi b { display:block; font:700 22px/1.1 ui-monospace, monospace; }
-  .kpi span { color:var(--dim); font-size:11px; text-transform:uppercase;
-    letter-spacing:.07em; }
-  .toolbar { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
-    align-items:center; margin-bottom:16px; }
-  .controls { display:flex; gap:8px; flex-wrap:wrap; }
   button { background:#17222c; color:var(--fg); border:1px solid #334453;
     border-radius:5px; padding:8px 12px; cursor:pointer; }
   button:hover { border-color:var(--cyan); }
   button.primary { background:#113044; border-color:#327b99; }
   button:disabled { opacity:.45; cursor:wait; }
-  .health { display:flex; gap:14px; flex-wrap:wrap; color:var(--dim); font-size:12px; }
+
+  /* ---- app shell ---- */
+  .app { display:grid; grid-template-columns:var(--sidebar-w) 1fr; min-height:100vh; }
+  .sidebar { background:var(--sidebar); border-right:1px solid var(--line);
+    padding:18px 0; display:flex; flex-direction:column; position:sticky; top:0;
+    height:100vh; }
+  .brand { padding:2px 18px 16px; border-bottom:1px solid var(--line); }
+  .brand .name { font-weight:700; font-size:16px; letter-spacing:-.01em; }
+  .brand .sub { color:var(--dim); font-size:10px; text-transform:uppercase;
+    letter-spacing:.12em; margin-top:2px; }
+  nav { padding:12px 10px; flex:1; }
+  .nav-item { display:flex; align-items:center; gap:10px; width:100%;
+    background:none; border:0; border-radius:6px; color:var(--dim);
+    padding:9px 10px; text-align:left; cursor:pointer; font-size:13px; }
+  .nav-item:hover { background:#141e27; color:var(--fg); border:0; }
+  .nav-item.active { background:#113044; color:var(--fg);
+    box-shadow:inset 2px 0 0 var(--cyan); }
+  .nav-item .ico { width:16px; text-align:center; opacity:.85; }
+  .nav-item .count { margin-left:auto; border:1px solid var(--line);
+    border-radius:9px; font:10px/1.4 ui-monospace, monospace; padding:0 6px;
+    color:var(--dim); }
+  .nav-item .count.bad { color:var(--red); border-color:#914643; }
+  .sidebar .foot { padding:12px 18px; border-top:1px solid var(--line);
+    color:#607582; font-size:10px; line-height:1.5; }
+  .content { min-width:0; padding:20px 22px 30px; }
+  .page { display:none; }
+  .page.active { display:block; }
+
+  .topbar { display:flex; justify-content:space-between; align-items:flex-start;
+    gap:20px; border-bottom:1px solid var(--line); padding-bottom:14px;
+    margin-bottom:16px; }
+  .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.14em;
+    font:700 11px/1.2 ui-monospace, monospace; }
+  h1 { margin:4px 0 0; font-size:22px; letter-spacing:-.02em; }
+  h1 span { color:var(--dim); font-size:13px; font-weight:500; margin-left:8px; }
+  .sandbox { border:1px solid var(--amber); color:var(--amber); background:#f0b35a12;
+    border-radius:4px; padding:7px 10px; text-transform:uppercase;
+    letter-spacing:.08em; font:700 10px/1.2 ui-monospace, monospace; }
+  .health { display:flex; gap:14px; flex-wrap:wrap; color:var(--dim);
+    font-size:12px; margin-top:10px; }
   .health b { color:var(--fg); }
   .health .fallback { color:var(--amber); }
   .health .live { color:var(--green); }
+
+  /* ---- donut KPIs ---- */
+  .kpis { display:grid; grid-template-columns:repeat(4, minmax(150px, 1fr));
+    border:1px solid var(--line); border-radius:7px; margin:0 0 16px;
+    overflow:hidden; background:var(--panel); }
+  .kpi { padding:14px; border-right:1px solid var(--line);
+    display:flex; align-items:center; gap:13px; min-height:96px; }
+  .kpi:last-child { border:0; }
+  .kpi svg { flex:none; }
+  .kpi .donut-num { font:700 17px/1.1 ui-monospace, monospace; fill:var(--fg); }
+  .kpi .donut-track { stroke:#1d2833; }
+  .kpi b { display:block; font:700 20px/1.1 ui-monospace, monospace; }
+  .kpi span { color:var(--dim); font-size:11px; text-transform:uppercase;
+    letter-spacing:.07em; }
+  .kpi .sub { color:#607582; font-size:10px; text-transform:none;
+    letter-spacing:0; display:block; margin-top:2px; }
+
+  .toolbar { display:flex; justify-content:space-between; gap:12px;
+    flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; }
+
   .workbench { display:grid; grid-template-columns:minmax(0, 1.55fr) minmax(310px, .7fr);
     gap:16px; margin-bottom:16px; }
   .panel { background:var(--panel); border:1px solid var(--line); border-radius:7px;
@@ -84,7 +125,7 @@
   .evidence-head h2 { margin-bottom:3px; }
   .evidence-summary { color:var(--dim); font:12px ui-monospace, monospace;
     text-align:right; }
-  .table-wrap { overflow:auto; max-height:390px; border:1px solid var(--line);
+  .table-wrap { overflow:auto; max-height:520px; border:1px solid var(--line);
     border-radius:5px; }
   table { width:100%; border-collapse:collapse; min-width:880px; }
   th { position:sticky; top:0; z-index:1; background:#17222c; color:#9cafbd;
@@ -99,10 +140,23 @@
   .mono { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
   .status { display:inline-block; border:1px solid var(--line); border-radius:10px;
     padding:1px 7px; font:10px ui-monospace, monospace; white-space:nowrap; }
-  .status.reachable, .status.released, .status.compliant { color:var(--green); }
-  .status.blocking, .status.quarantined { color:var(--red); }
-  .status.waiting, .status.update_required { color:var(--amber); }
-  .lower { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+  .status.reachable, .status.released, .status.compliant, .status.Ready,
+  .status.Printing, .status.running, .status.Approved { color:var(--green); }
+  .status.blocking, .status.quarantined, .status.stalled, .status.Error,
+  .status.offline { color:var(--red); }
+  .status.waiting, .status.update_required, .status.Sleep, .status.Sleeping,
+  .status.Energy-saver, .status.Warm-up, .status.Staged { color:var(--amber); }
+  .badge { display:inline-block; border-radius:4px; padding:1px 7px;
+    font:10px/1.5 ui-monospace, monospace; }
+  .badge.pull { color:var(--cyan); border:1px solid #2b6c85; }
+  .badge.direct { color:var(--dim); border:1px solid var(--line); }
+  .lower { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:16px; }
+  .quarantine-list { max-height:210px; overflow:auto; font:11px/1.65 ui-monospace, monospace; }
+  .quarantine-line { border-bottom:1px solid #202c35; padding:4px 0; }
+  .quarantine-line .doc { color:var(--fg); }
+  .analyzing { border-left:3px solid var(--amber); animation:pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.55; } }
+  @media (max-width:1250px) { .lower { grid-template-columns:1fr 1fr; } }
   .alerts, .log { max-height:210px; overflow:auto;
     font:11px/1.65 ui-monospace, monospace; }
   .alert-line { display:grid; grid-template-columns:68px 92px 1fr; gap:8px;
@@ -111,14 +165,53 @@
   details { color:var(--dim); font-size:12px; }
   summary { cursor:pointer; }
   .scenario-note { color:var(--dim); font-size:11px; }
+
+  /* ---- page chrome ---- */
+  .page-head { display:flex; justify-content:space-between; align-items:end;
+    gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .page-head h1 { font-size:19px; }
+  .page-head .note { color:var(--dim); font-size:12px; }
+  .filter-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+    margin-bottom:12px; }
+  .filter-bar input, .filter-bar select { background:#0e161d; color:var(--fg);
+    border:1px solid #334453; border-radius:5px; padding:7px 10px; font:13px Inter, sans-serif; }
+  .filter-bar input { min-width:230px; }
+  .filter-bar label { color:var(--dim); font-size:12px; }
+  .grid-2 { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);
+    gap:16px; align-items:start; }
+  .upload-box { border:1px dashed #334453; border-radius:7px; padding:16px;
+    color:var(--dim); font-size:12px; }
+  .upload-box input[type=file] { display:block; margin:10px 0;
+    color:var(--dim); font-size:12px; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:4px 14px;
+    font-size:12px; }
+  .kv span:nth-child(odd) { color:var(--dim); }
+  .integration { border:1px solid var(--line); border-radius:6px;
+    padding:12px; margin-bottom:10px; background:var(--panel-2); }
+  .integration h3 { margin:0 0 6px; font-size:13px; }
+  .readonly-note { border:1px solid var(--line); border-radius:5px;
+    color:var(--dim); font-size:11px; padding:7px 10px; margin-bottom:12px;
+    background:var(--panel-2); }
+
+  @media (max-width:1100px) {
+    .app { grid-template-columns:1fr; }
+    .sidebar { position:static; height:auto; flex-direction:row;
+      align-items:center; overflow-x:auto; padding:8px; gap:4px; }
+    .brand { border:0; padding:4px 12px; }
+    .brand .sub { display:none; }
+    nav { display:flex; padding:0; }
+    .nav-item { white-space:nowrap; }
+    .nav-item.active { box-shadow:inset 0 -2px 0 var(--cyan); }
+    .sidebar .foot { display:none; }
+    .workbench, .lower, .grid-2 { grid-template-columns:1fr; }
+  }
   @media (max-width:900px) {
-    .workbench, .lower { grid-template-columns:1fr; }
     .kpis { grid-template-columns:1fr 1fr; }
     .kpi:nth-child(2) { border-right:0; }
     .kpi:nth-child(-n+2) { border-bottom:1px solid var(--line); }
   }
   @media (max-width:560px) {
-    .shell { padding:14px; }
+    .content { padding:14px; }
     .topbar { flex-direction:column; }
     h1 span { display:block; margin:3px 0 0; }
     .health { width:100%; }
@@ -126,80 +219,265 @@
 </style>
 </head>
 <body>
-<main class="shell">
-  <header class="topbar">
-    <div>
-      <div class="eyebrow">Print operations control</div>
-      <h1>FleetPilot <span>evidence-led response for enterprise printer fleets</span></h1>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="name">🖨 FleetPilot</div>
+      <div class="sub">MPS operations</div>
     </div>
-    <div class="sandbox">synthetic records · session-isolated POC · no device connections</div>
-  </header>
+    <nav aria-label="Main navigation">
+      <button class="nav-item active" data-page="dashboard" onclick="showTab('dashboard')"><span class="ico">▤</span> Dashboard</button>
+      <button class="nav-item" data-page="printers" onclick="showTab('printers')"><span class="ico">🖨</span> Printers <span class="count" id="nav-printers">–</span></button>
+      <button class="nav-item" data-page="queues" onclick="showTab('queues')"><span class="ico">≡</span> Queues <span class="count" id="nav-queues">–</span></button>
+      <button class="nav-item" data-page="firmware" onclick="showTab('firmware')"><span class="ico">⬆</span> Firmware <span class="count" id="nav-firmware">–</span></button>
+      <button class="nav-item" data-page="reports" onclick="showTab('reports')"><span class="ico">◔</span> Reports</button>
+      <button class="nav-item" data-page="admin" onclick="showTab('admin')"><span class="ico">⚿</span> Administration</button>
+      <button class="nav-item" data-page="settings" onclick="showTab('settings')"><span class="ico">⚙</span> Settings</button>
+    </nav>
+    <div class="foot">synthetic records · session-isolated POC<br>no device connections</div>
+  </aside>
 
-  <section class="kpis" aria-label="Fleet status">
-    <div class="kpi"><b id="s-devices">–</b><span>printers</span></div>
-    <div class="kpi"><b id="s-servers">–</b><span>print servers</span></div>
-    <div class="kpi"><b id="s-reachable">–</b><span>reachable</span></div>
-    <div class="kpi"><b id="s-alerts">–</b><span>open alerts</span></div>
-  </section>
-
-  <section class="toolbar">
-    <div class="controls" aria-label="Demo scenarios">
-      <button class="primary" onclick="run('queue_hang')">Queue hang · 22 queues</button>
-      <button class="primary" onclick="run('firmware_push_freezes')">Guarded firmware rollout</button>
-      <button onclick="reset()">New run</button>
-    </div>
-    <div class="health" id="health" aria-live="polite"></div>
-  </section>
-
-  <details>
-    <summary>Additional test scenarios</summary>
-    <div class="controls" style="margin:8px 0 14px">
-      <button onclick="run('alert_storm')">Alert storm</button>
-      <button onclick="run('firmware_drift')">Clean firmware pilot</button>
-      <button onclick="run('low_supplies')">Low supplies</button>
-    </div>
-  </details>
-
-  <section class="workbench">
-    <div class="panel">
-      <h2>Incident assessment</h2>
-      <div id="rca" class="empty">Choose a scenario to start a new run.</div>
-    </div>
-    <div>
-      <div id="outcome-verification"></div>
-      <div class="panel">
-        <h2>Decision gate</h2>
-        <div id="approvals" class="empty">No action awaiting approval.</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="evidence-head">
+  <main class="content">
+    <header class="topbar">
       <div>
-        <h2>Incident evidence <span>synthetic records</span></h2>
-        <div class="scenario-note">Identity, ownership, network reachability, and change state stay attached to the incident.</div>
+        <div class="eyebrow">Print operations control</div>
+        <h1>FleetPilot <span id="page-title">evidence-led response for enterprise printer fleets</span></h1>
+        <div class="health" id="health" aria-live="polite"></div>
       </div>
-      <div id="evidence-summary" class="evidence-summary">No active incident</div>
-    </div>
-    <div id="evidence" class="empty">Run Queue hang or Guarded firmware rollout.</div>
-  </section>
+      <div class="sandbox">synthetic records · session-isolated POC · no device connections</div>
+    </header>
 
-  <section class="lower">
-    <div class="panel">
-      <h2>Open alerts</h2>
-      <div id="alerts" class="alerts empty">All clear</div>
-    </div>
-    <div class="panel">
-      <h2>Audit journal <span>run <span id="run-id">–</span></span></h2>
-      <div id="journal" class="log empty">No events</div>
-    </div>
-  </section>
-</main>
+    <!-- ================= DASHBOARD ================= -->
+    <section class="page active" id="page-dashboard" aria-label="Dashboard">
+      <section class="kpis" aria-label="Fleet status">
+        <div class="kpi" id="donut-printers"></div>
+        <div class="kpi" id="donut-servers"></div>
+        <div class="kpi" id="donut-alerts"></div>
+        <div class="kpi" id="donut-compliance"></div>
+      </section>
+
+      <section class="toolbar">
+        <div class="controls" aria-label="Demo scenarios">
+          <button class="primary" onclick="run('queue_hang')">Queue hang · 22 pull queues</button>
+          <button class="primary" onclick="run('firmware_push_freezes')">Guarded firmware rollout</button>
+          <button onclick="reset()">New run</button>
+        </div>
+      </section>
+
+      <details>
+        <summary>Additional test scenarios</summary>
+        <div class="controls" style="margin:8px 0 14px">
+          <button onclick="run('alert_storm')">Alert storm</button>
+          <button onclick="run('firmware_drift')">Clean firmware pilot</button>
+          <button onclick="run('low_supplies')">Low supplies</button>
+        </div>
+      </details>
+
+      <section class="workbench">
+        <div class="panel">
+          <h2>Incident assessment</h2>
+          <div id="rca" class="empty">Choose a scenario to start a new run.</div>
+        </div>
+        <div>
+          <div id="outcome-verification"></div>
+          <div class="panel">
+            <h2>Decision gate</h2>
+            <div id="approvals" class="empty">No action awaiting approval.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="evidence-head">
+          <div>
+            <h2>Incident evidence <span>synthetic records</span></h2>
+            <div class="scenario-note">Identity, ownership, network reachability, and change state stay attached to the incident.</div>
+          </div>
+          <div id="evidence-summary" class="evidence-summary">No active incident</div>
+        </div>
+        <div id="evidence" class="empty">Run Queue hang or Guarded firmware rollout.</div>
+      </section>
+
+      <section class="lower">
+        <div class="panel">
+          <h2>Open alerts</h2>
+          <div id="alerts" class="alerts empty">All clear</div>
+        </div>
+        <div class="panel">
+          <h2>Quarantine</h2>
+          <div id="quarantine" class="quarantine-list empty">No quarantined items</div>
+        </div>
+        <div class="panel">
+          <h2>Audit journal <span>run <span id="run-id">–</span></span></h2>
+          <div id="journal" class="log empty">No events</div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ================= PRINTERS ================= -->
+    <section class="page" id="page-printers" aria-label="Printers and assets">
+      <div class="page-head">
+        <h1>Printers / Assets</h1>
+        <div class="note">Full fleet inventory · contact and network detail · <span id="printer-count-note">–</span></div>
+      </div>
+      <div class="filter-bar">
+        <input id="printer-search" type="search" placeholder="Search hostname, serial, IP, model, contact…"
+               oninput="renderPrintersTable()">
+        <label>Vendor
+          <select id="printer-vendor" onchange="renderPrintersTable()">
+            <option value="">All</option><option>Xerox</option><option>Ricoh</option><option>HP</option>
+          </select>
+        </label>
+        <label>Server
+          <select id="printer-server" onchange="renderPrintersTable()"></select>
+        </label>
+      </div>
+      <div class="panel" style="padding:0; overflow:hidden;">
+        <div class="table-wrap" style="border:0; max-height:640px;">
+          <table id="printers-table">
+            <thead><tr>
+              <th>Hostname</th><th>IP / MAC</th><th>Serial</th><th>Manufacturer</th>
+              <th>Model</th><th>Status</th><th>Last status</th>
+              <th>Server / queue</th><th>Contact</th><th>Firmware</th>
+            </tr></thead>
+            <tbody id="printers-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= QUEUES ================= -->
+    <section class="page" id="page-queues" aria-label="Print queues">
+      <div class="page-head">
+        <h1>Print Queues</h1>
+        <div class="note"><span class="badge pull">pull release</span> PrintVault Secure Release (srv-east-1) holds jobs until badge release ·
+          <span class="badge direct">direct</span> IP print queues on the remaining servers · <span id="queue-count-note">–</span></div>
+      </div>
+      <div class="panel" style="padding:0; overflow:hidden;">
+        <div class="table-wrap" style="border:0; max-height:680px;">
+          <table id="queues-table">
+            <thead><tr>
+              <th>Queue</th><th>Type</th><th>Server</th><th>Protocol</th>
+              <th>Pending jobs</th><th>Quarantined</th><th>Status</th>
+            </tr></thead>
+            <tbody id="queues-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= FIRMWARE ================= -->
+    <section class="page" id="page-firmware" aria-label="Firmware">
+      <div class="page-head">
+        <h1>Firmware Management</h1>
+        <div class="note">Vendor package repository · staged files a rollout pushes · <span id="firmware-count-note">–</span></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel" style="padding:0; overflow:hidden;">
+          <div class="table-wrap" style="border:0; max-height:560px;">
+            <table id="firmware-table">
+              <thead><tr>
+                <th>Package</th><th>Vendor / family</th><th>Version</th><th>File</th>
+                <th>Size</th><th>SHA-256</th><th>Signature</th><th>Uploaded</th><th>Push targets</th><th>State</th>
+              </tr></thead>
+              <tbody id="firmware-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <h2>Upload package <span>POC · nothing is stored</span></h2>
+            <div class="upload-box">
+              Load a vendor-signed firmware or clone file before scheduling a rollout.
+              In this POC the upload control is inert; packages above are synthetic.
+              <input type="file" aria-label="Firmware package file">
+              <div class="controls"><button disabled>Verify signature &amp; stage</button></div>
+            </div>
+          </div>
+          <div class="panel" style="margin-top:16px;">
+            <h2>Rollout status</h2>
+            <div id="firmware-rollout" class="empty">No rollout in progress.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= REPORTS ================= -->
+    <section class="page" id="page-reports" aria-label="Reports">
+      <div class="page-head">
+        <h1>Reports</h1>
+        <div class="note">Saved operational reports · generated from the audit journal</div>
+      </div>
+      <div class="readonly-note">Report generation is read-only in this POC. The audit journal backing these reports is live on the Dashboard.</div>
+      <div class="panel" style="padding:0; overflow:hidden;">
+        <div class="table-wrap" style="border:0;">
+          <table style="min-width:720px;">
+            <thead><tr><th>Report</th><th>Type</th><th>Period</th><th>Generated</th><th>Owner</th></tr></thead>
+            <tbody>
+              <tr><td><div class="primary-line">Fleet readiness summary</div></td><td>Fleet health</td><td>Aug 2026</td><td class="mono">2026-08-27</td><td>avery.morgan</td></tr>
+              <tr><td><div class="primary-line">Pull-print release activity</div></td><td>Print volume</td><td>Aug 2026</td><td class="mono">2026-08-27</td><td>avery.morgan</td></tr>
+              <tr><td><div class="primary-line">Firmware compliance by vendor</div></td><td>Compliance</td><td>Q3 2026</td><td class="mono">2026-08-15</td><td>ops.reports</td></tr>
+              <tr><td><div class="primary-line">Quarterly device utilization</div></td><td>Print volume</td><td>Q2 2026</td><td class="mono">2026-06-30</td><td>ops.reports</td></tr>
+              <tr><td><div class="primary-line">Incident response log</div></td><td>Incidents</td><td>Jul–Aug 2026</td><td class="mono">2026-08-27</td><td>ops.reports</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ADMINISTRATION ================= -->
+    <section class="page" id="page-admin" aria-label="Administration">
+      <div class="page-head">
+        <h1>Administration</h1>
+        <div class="note">Operators, roles, and approvals</div>
+      </div>
+      <div class="readonly-note">User administration is read-only in this POC. Demo sessions are isolated per browser tab, not by operator login.</div>
+      <div class="panel" style="padding:0; overflow:hidden;">
+        <div class="table-wrap" style="border:0;">
+          <table style="min-width:720px;">
+            <thead><tr><th>Operator</th><th>Role</th><th>Scope</th><th>Approval limit</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td><div class="primary-line">avery.morgan</div><div class="secondary">Raleigh Operations Center</div></td><td>Fleet administrator</td><td>All servers</td><td class="mono">$5,000</td><td><span class="status reachable">active</span></td></tr>
+              <tr><td><div class="primary-line">casey.nguyen</div><div class="secondary">Richmond Service Center</div></td><td>Site operator</td><td>srv-east-2</td><td class="mono">$500</td><td><span class="status reachable">active</span></td></tr>
+              <tr><td><div class="primary-line">morgan.patel</div><div class="secondary">Denver Regional Office</div></td><td>Site operator</td><td>srv-west-1</td><td class="mono">$500</td><td><span class="status reachable">active</span></td></tr>
+              <tr><td><div class="primary-line">riley.chen</div><div class="secondary">Phoenix Distribution Center</div></td><td>Site operator</td><td>srv-west-2</td><td class="mono">$500</td><td><span class="status reachable">active</span></td></tr>
+              <tr><td><div class="primary-line">svc.fleetpilot</div><div class="secondary">Automation account</div></td><td>Agent (gated)</td><td>All servers, read</td><td class="mono">escalates only</td><td><span class="status waiting">restricted</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section class="page" id="page-settings" aria-label="Settings">
+      <div class="page-head">
+        <h1>Settings</h1>
+        <div class="note">Integrations and runtime configuration</div>
+      </div>
+      <div class="readonly-note">Configuration is fixed for the demo; values below reflect the running session.</div>
+      <div class="integration"><h3>PrintVault Secure Release</h3>
+        <div class="kv"><span>Role</span><span>Pull-print release service on srv-east-1 (Equitrac-style hold/release)</span>
+        <span>Queues</span><span class="mono" id="settings-pull-queues">–</span>
+        <span>Transport</span><span class="mono">PrintVault agent · badge release at device</span></div></div>
+      <div class="integration"><h3>Device management</h3>
+        <div class="kv"><span>Channel</span><span class="mono">SNMPv3 + HTTPS</span>
+        <span>Poll interval</span><span class="mono">60s</span>
+        <span>Fleet</span><span class="mono" id="settings-fleet">–</span></div></div>
+      <div class="integration"><h3>Diagnosis runtime</h3>
+        <div class="kv"><span>Model</span><span class="mono" id="settings-model">–</span>
+        <span>Backend</span><span class="mono">Google Gemini (Vertex AI)</span>
+        <span>Fallback</span><span>Deterministic heuristic — every action deadline-bounded</span></div></div>
+      <div class="integration"><h3>Audit</h3>
+        <div class="kv"><span>Journal</span><span>Append-only SQLite + per-run event log</span>
+        <span>External verification</span><span class="mono">external_system_verified=false (simulator-only POC)</span></div></div>
+    </section>
+  </main>
+</div>
 
 <script>
 const $ = id => document.getElementById(id);
 let busy = false;
+let latestState = null;
 const SESSION_STORAGE_KEY = 'fleetpilot.browser_session';
 let browserSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
 if (!browserSession) {
@@ -210,12 +488,70 @@ const sessionHeaders = Object.freeze({
   'X-FleetPilot-Session': browserSession
 });
 
+const PAGE_TITLES = {
+  dashboard: 'evidence-led response for enterprise printer fleets',
+  printers: 'Printers / Assets — fleet inventory',
+  queues: 'Print queues — pull release & direct',
+  firmware: 'Firmware — package repository & rollouts',
+  reports: 'Reports — saved operational reports',
+  admin: 'Administration — operators & roles',
+  settings: 'Settings — integrations & runtime',
+};
+function showTab(name) {
+  document.querySelectorAll('.page').forEach(p =>
+    p.classList.toggle('active', p.id === `page-${name}`));
+  document.querySelectorAll('.nav-item').forEach(item =>
+    item.classList.toggle('active', item.dataset.page === name));
+  $('page-title').textContent = PAGE_TITLES[name] || '';
+}
+
+function donut(el, label, value, total, sub, invert) {
+  // invert=true → healthy when value/total is LOW (e.g. open alerts)
+  const frac = total ? Math.min(value / total, 1) : 0;
+  const healthy = invert ? frac === 0 : frac >= 0.999;
+  const color = healthy ? '#57d68d' : (frac >= 0.9 ? '#f0b35a' : '#ff6b68');
+  const c = 2 * Math.PI * 26;
+  return el.innerHTML = `
+    <svg width="66" height="66" viewBox="0 0 66 66" role="img" aria-label="${esc(label)}">
+      <circle class="donut-track" cx="33" cy="33" r="26" fill="none" stroke-width="6"/>
+      <circle cx="33" cy="33" r="26" fill="none" stroke="${color}" stroke-width="6"
+        stroke-linecap="round" stroke-dasharray="${(c * frac).toFixed(1)} ${c.toFixed(1)}"
+        transform="rotate(-90 33 33)"/>
+      <text x="33" y="37" text-anchor="middle" class="donut-num">${esc(value)}</text>
+    </svg>
+    <div><b>${esc(value)}<small style="font-size:12px;color:var(--dim)"> / ${esc(total)}</small></b>
+    <span>${esc(label)}</span><span class="sub">${esc(sub)}</span></div>`;
+}
+
 function render(s) {
-  $('s-devices').textContent = s.fleet.devices;
-  $('s-servers').textContent = s.fleet.servers.length;
-  $('s-reachable').textContent = s.fleet.reachable;
-  $('s-alerts').textContent = s.fleet.alerts_open;
+  latestState = s;
+  const f = s.fleet || {};
+  donut($('donut-printers'), 'printers up', f.reachable ?? 0, f.devices ?? 0,
+    'all synthetic SNMP polls');
+  donut($('donut-servers'), 'print servers up', (f.servers_up || []).length,
+    (f.servers || []).length, 'incl. PrintVault release');
+  const quarantinedCount = ((s.quarantine || {}).jobs || []).length +
+    ((s.quarantine || {}).devices || []).length;
+  donut($('donut-alerts'), 'open alerts', f.alerts_open ?? 0,
+    Math.max(f.alerts_open ?? 0, 30),
+    quarantinedCount ? `green · ${quarantinedCount} quarantined` : 'green when zero', true);
+  const compliant = f.firmware_compliant ?? 0, devices = f.devices ?? 0;
+  donut($('donut-compliance'), 'fw compliance',
+    Math.round(100 * compliant / (devices || 1)), 100,
+    `${compliant} of ${devices} on target`);
   $('run-id').textContent = s.run_id || '–';
+  $('nav-printers').textContent = f.devices ?? '–';
+  const stalled = (s.queues || []).filter(q => q.status === 'stalled').length;
+  const queuesNav = $('nav-queues');
+  queuesNav.textContent = stalled ? `${stalled} stalled` : 'OK';
+  queuesNav.classList.toggle('bad', !!stalled);
+  const noncompliant = devices - compliant;
+  const fwNav = $('nav-firmware');
+  fwNav.textContent = noncompliant ? `${noncompliant} pending` : 'OK';
+  fwNav.classList.toggle('bad', noncompliant > 0);
+  $('printer-count-note').textContent = `${devices} devices · ${compliant} firmware-compliant`;
+  $('queue-count-note').textContent =
+    `${(s.queues || []).length} queues across ${(f.servers || []).length} servers`;
 
   const h = s.health || {};
   const src = h.diagnosis_source;
@@ -226,6 +562,10 @@ function render(s) {
       esc(src === 'heuristic' ? 'deterministic fallback' : `${src} live`)}</b></span>` : '') +
     (h.revision ? `<span>revision <b>${esc(h.revision)}</b></span>` : '') +
     (h.fallback_reason ? `<span>fallback <b class="fallback">${esc(h.fallback_reason)}</b></span>` : '');
+  $('settings-model').textContent = h.model || '–';
+  $('settings-fleet').textContent = `${devices} devices · ${(f.servers || []).length} servers`;
+  $('settings-pull-queues').textContent =
+    `${(s.queues || []).filter(q => q.queue_type === 'pull_release').length} release queues on srv-east-1`;
 
   const sum = s.last_summary || {};
   const executed = sum.executed || [];
@@ -247,6 +587,23 @@ function render(s) {
          <span>${esc(a.device)}</span><span>${esc(a.symptom)} · ${esc(a.server)}</span></div>`).join('')
     : '<span class="empty">All clear</span>';
 
+  const q = s.quarantine || {};
+  const qJobs = q.jobs || [], qDevices = q.devices || [];
+  $('quarantine').innerHTML = (qJobs.length || qDevices.length)
+    ? [
+        ...qJobs.map(job => `<div class="quarantine-line">
+          <span class="doc">${esc(job.document_name)}</span>
+          <span class="status blocking">job quarantined</span>
+          <div class="secondary mono">${esc(job.job_id)} · ${esc(job.owner_account)} · ${esc(job.queue)} on ${esc(job.server)}</div>
+        </div>`),
+        ...qDevices.map(device => `<div class="quarantine-line">
+          <span class="doc">${esc(device)}</span>
+          <span class="status quarantined">device quarantined</span>
+          <div class="secondary mono">frozen mid-update · held out of rollout</div>
+        </div>`),
+      ].join('')
+    : '<span class="empty">No quarantined items</span>';
+
   $('approvals').innerHTML = s.pending_approvals.length
     ? s.pending_approvals.map(p =>
         `<div class="approval"><h3>APPROVAL REQUIRED</h3>
@@ -265,12 +622,135 @@ function render(s) {
   $('journal').innerHTML = s.journal.length ? s.journal.map(e =>
     `<div><span class="kind">[${esc(e.kind)}]</span> ${summ(e)}</div>`).join('')
     : '<span class="empty">No events</span>';
+
+  renderPrintersTable(s);
+  renderQueuesTable(s);
+  renderFirmwareTab(s);
+}
+
+function renderPrintersTable(s) {
+  s = s || latestState;
+  if (!s) return;
+  const term = ($('printer-search').value || '').toLowerCase();
+  const vendor = $('printer-vendor').value;
+  const serverSel = $('printer-server');
+  const server = serverSel.value;
+  const rows = (s.inventory || []).filter(d =>
+    (!vendor || d.manufacturer === vendor) &&
+    (!server || d.server === server) &&
+    (!term || [d.hostname, d.serial_number, d.ip_address, d.model,
+               d.contact_name, d.device_id].join(' ').toLowerCase().includes(term)));
+  $('printers-body').innerHTML = rows.map(d => `<tr>
+    <td><div class="primary-line mono">${esc(d.hostname)}</div><div class="secondary mono">${esc(d.device_id)}</div></td>
+    <td><div class="primary-line mono">${esc(d.ip_address)}</div><div class="secondary mono">${esc(d.mac_address)}</div></td>
+    <td class="mono">${esc(d.serial_number)}</td>
+    <td>${esc(d.manufacturer)}</td>
+    <td><div class="primary-line">${esc(d.model)}</div></td>
+    <td><span class="status ${esc(d.communication_status === 'unreachable' ? 'offline' : d.printer_status)}">${esc(d.communication_status === 'unreachable' ? 'Offline' : d.printer_status)}</span></td>
+    <td class="mono">${esc(d.last_status_at || '–')}</td>
+    <td><div class="primary-line mono">${esc(d.server)}</div>
+      <div class="secondary"><span class="badge ${d.queue && d.server === 'srv-east-1' ? 'pull' : 'direct'}">${d.server === 'srv-east-1' ? 'pull' : 'direct'}</span> ${esc(d.queue)}</div></td>
+    <td><div class="primary-line">${esc(d.contact_name)}</div>
+      <div class="secondary mono">${esc(d.contact_phone)}</div>
+      <div class="secondary">${esc(d.point_of_contact)}</div></td>
+    <td><div class="mono" style="font-size:11px">${esc(d.current_firmware)}</div>
+      <span class="status ${esc(d.update_status)}">${esc(d.update_status)}</span></td>
+  </tr>`).join('') || '<tr><td colspan="10" class="empty">No printers match the filter.</td></tr>';
+}
+
+function renderQueuesTable(s) {
+  s = s || latestState;
+  if (!s) return;
+  const rows = (s.queues || []);
+  $('queues-body').innerHTML = rows.map(q => `<tr class="${q.status === 'stalled' ? 'suspect' : ''}">
+    <td class="primary-line mono">${esc(q.queue)}</td>
+    <td><span class="badge ${esc(q.queue_type === 'pull_release' ? 'pull' : 'direct')}">${esc(q.queue_type === 'pull_release' ? 'pull release' : 'direct')}</span></td>
+    <td class="mono">${esc(q.server)}</td>
+    <td>${esc(q.protocol)}</td>
+    <td class="mono">${esc(q.pending_jobs)}</td>
+    <td>${q.quarantined_jobs ? `<div><span class="status blocking">${esc(q.quarantined_jobs)} quarantined</span></div>` : ''}</td>
+    <td><span class="status ${esc(q.status)}">${esc(q.status)}</span></td>
+  </tr>`).join('') || '<tr><td colspan="7" class="empty">No queues.</td></tr>';
+}
+
+function renderFirmwareTab(s) {
+  s = s || latestState;
+  if (!s) return;
+  const fw = s.firmware || {};
+  const packages = fw.packages || [];
+  const inventory = s.inventory || [];
+  const pendingByPackage = {};
+  for (const d of inventory) {
+    if (d.update_status === 'update_required') {
+      pendingByPackage[`${d.model}|${d.target_firmware}`] =
+        (pendingByPackage[`${d.model}|${d.target_firmware}`] || 0) + 1;
+    }
+  }
+  const totalPending = Object.values(pendingByPackage).reduce((a, b) => a + b, 0);
+  $('firmware-count-note').textContent = totalPending
+    ? `${packages.length} vendor packages · ${totalPending} devices awaiting push`
+    : `${packages.length} vendor packages staged · fleet compliant`;
+  $('firmware-body').innerHTML = packages.map(p => {
+    const pending = pendingByPackage[`${p.model_family}|${p.version}`] || 0;
+    return `<tr class="${pending ? 'suspect' : ''}">
+    <td class="mono">${esc(p.package_id)}</td>
+    <td><div class="primary-line">${esc(p.vendor)}</div><div class="secondary">${esc(p.model_family)}</div></td>
+    <td class="mono">${esc(p.version)}</td>
+    <td class="mono" style="font-size:11px">${esc(p.file_name)}</td>
+    <td class="mono">${esc(p.size_mb)} MB</td>
+    <td class="mono" style="font-size:11px">${esc(p.sha256)}…</td>
+    <td><div style="font-size:11px">${esc(p.signed_by)}</div></td>
+    <td class="mono" style="font-size:11px">${esc(p.uploaded_at)}</td>
+    <td>${pending ? `<span class="status blocking">push target · ${pending} devices</span>` : '<span class="empty">—</span>'}</td>
+    <td><span class="status ${esc(p.status)}">${esc(p.status)}</span></td>
+  </tr>`;}).join('');
+
+  const r = s.rollout_report;
+  const frozen = (fw.frozen || []).length, quarantined = (fw.quarantined || []).length;
+  if (r) {
+    const aborted = r.outcome === 'aborted';
+    $('firmware-rollout').innerHTML = `<div class="rollout panel ${aborted ? 'aborted' : 'clean'}" style="margin:0">
+      <h3>${aborted ? 'ROLLOUT ABORTED · FLEET PROTECTED' : 'PILOT COMPLETE · EXPANSION GATED'}</h3>
+      <div class="mini-grid">
+        <span>pilot</span><span>${esc(r.pilot_size)} printers</span>
+        <span>completed</span><span>${esc(r.pilot_completed)}</span>
+        <span>frozen detected</span><span>${frozen}</span>
+        <span>quarantined</span><span>${quarantined}</span>
+        <span>fleet untouched</span><span>${esc(r.fleet_untouched)}</span>
+      </div></div>`;
+  } else if (quarantined || frozen) {
+    $('firmware-rollout').innerHTML =
+      `<div class="mini-grid"><span>frozen detected</span><span>${frozen}</span>
+       <span>quarantined</span><span>${quarantined}</span></div>`;
+  } else {
+    $('firmware-rollout').innerHTML = '<span class="empty">No rollout in progress.</span>';
+  }
 }
 
 function renderEvidence(e) {
   const jobs = e.print_jobs || [];
   const devices = e.devices || [];
   const network = e.network || {scope:0, reachable:0, unreachable:0};
+  if (!jobs.length && !devices.length && latestState && (latestState.inventory || []).length) {
+    // Healthy fleet: show the live inventory as the landing view.
+    const inv = latestState.inventory;
+    const reachable = inv.filter(d => d.communication_status === 'reachable').length;
+    $('evidence-summary').textContent =
+      `${inv.length} printers · ${reachable}/${inv.length} reachable · all systems healthy`;
+    $('evidence').innerHTML = `<div class="table-wrap" style="max-height:420px"><table>
+      <thead><tr><th>Hostname</th><th>Printer / network</th><th>Model</th><th>Status</th><th>Server / queue</th><th>Firmware</th></tr></thead>
+      <tbody>${inv.map(device => `<tr>
+        <td><div class="primary-line mono">${esc(device.hostname)}</div><div class="secondary mono">${esc(device.serial_number)}</div></td>
+        <td><div class="primary-line mono">${esc(device.ip_address)}</div><div class="secondary mono">${esc(device.mac_address)}</div></td>
+        <td><div class="primary-line">${esc(device.manufacturer)} ${esc(device.model)}</div></td>
+        <td><span class="status ${esc(device.communication_status === 'unreachable' ? 'offline' : device.printer_status)}">${esc(device.communication_status === 'unreachable' ? 'Offline' : device.printer_status)}</span></td>
+        <td><div class="primary-line mono">${esc(device.server)}</div>
+          <div class="secondary"><span class="badge ${device.server === 'srv-east-1' ? 'pull' : 'direct'}">${device.server === 'srv-east-1' ? 'pull' : 'direct'}</span> ${esc(device.queue)}</div></td>
+        <td><div class="mono" style="font-size:11px">${esc(device.current_firmware)}</div>
+          <span class="status ${esc(device.update_status)}">${esc(device.update_status)}</span></td>
+      </tr>`).join('')}</tbody></table></div>`;
+    return;
+  }
   if (jobs.length) {
     const queues = new Set(jobs.map(job => job.queue)).size;
     $('evidence-summary').textContent = `${jobs.length} jobs · ${queues} queues · ${network.reachable}/${network.scope} reachable`;
@@ -281,7 +761,8 @@ function renderEvidence(e) {
           job.suspected_blocker ? 'suspect' : 'linked'}</span><div class="secondary mono">${esc(job.job_id)}</div></td>
         <td><div class="primary-line">${esc(job.document_name)}</div><div class="secondary">${esc(job.department)}</div></td>
         <td><div class="primary-line mono">${esc(job.owner_account)}</div><div class="secondary mono">${esc(job.account_code)}</div></td>
-        <td><div class="primary-line mono">${esc(job.device_id)} · ${esc(job.queue)}</div><div class="secondary mono">${esc(job.server)}</div></td>
+        <td><div class="primary-line mono">${esc(job.device_id)} · ${esc(job.queue)}</div>
+          <div class="secondary"><span class="badge ${job.queue_type === 'pull_release' ? 'pull' : 'direct'}">${esc(job.queue_type === 'pull_release' ? 'pull release' : 'direct')}</span> ${esc(job.server)}</div></td>
         <td><div class="primary-line">${esc(job.pages)} pages · ${esc(job.size_mb)} MB</div><div class="secondary">${esc(job.datatype)} · ${shortTime(job.submitted_at)}</div></td>
         <td><span class="status ${esc(job.status)}">${esc(job.status)}</span></td>
       </tr>`).join('')}</tbody></table></div>`;
@@ -348,6 +829,7 @@ function summ(e) {
   if (e.kind === 'gate') return `${esc(p.action.kind)} → ${esc(p.decision)} (${esc(p.reason)})`;
   if (e.kind === 'human_decision') return `${esc(p.action.kind)} → ${esc(p.decision)}`;
   if (e.kind === 'observe') return `${esc(p.alert_count)} alerts observed`;
+  if (e.kind === 'incident_injected') return `${esc(p.scenario)} · ${esc(p.alert_count)} alerts injected`;
   if (e.kind === 'verify') return `${esc(p.status)} · ${esc(p.alerts_before)} → ${esc(p.alerts_after)} alerts`;
   if (e.kind === 'cycle_complete') return `${esc(p.executed.length)} executed, ${esc(p.escalated.length)} escalated, ${esc(p.blocked.length)} blocked`;
   if (e.kind === 'rollout_pilot') return `pilot completed on ${esc((p.result && p.result.completed || []).length)} printers`;
@@ -378,7 +860,16 @@ async function run(name) {
     const response = await fetch(`/api/scenario/${name}`, {
       method:'POST', headers:sessionHeaders
     });
-    render(await responseJson(response));
+    const incident = await responseJson(response);
+    render(incident);
+    // Hold the red incident state so the failure is visible, then resolve.
+    $('rca').innerHTML = '<div class="diagnosis analyzing"><strong>Analyzing incident…</strong>' +
+      '<div class="meta">correlating alerts · grounding scope · Gemini diagnosis in flight</div></div>';
+    await new Promise(done => setTimeout(done, 3500));
+    const resolved = await fetch('/api/resolve', {
+      method:'POST', headers:sessionHeaders
+    });
+    render(await responseJson(resolved));
   });
 }
 async function decide(id, action) {
@@ -403,7 +894,15 @@ async function responseJson(response) {
   return body;
 }
 fetch('/api/state', {headers:sessionHeaders})
-  .then(responseJson).then(render).catch(console.error);
+  .then(responseJson).then(s => {
+    const serverSel = $('printer-server');
+    (s.fleet.servers || []).forEach(name => {
+      const option = document.createElement('option');
+      option.value = name; option.textContent = name;
+      serverSel.appendChild(option);
+    });
+    render(s);
+  }).catch(console.error);
 </script>
 </body>
 </html>

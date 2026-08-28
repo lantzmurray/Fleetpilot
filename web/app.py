@@ -114,7 +114,9 @@ def deployment_details() -> dict:
 
 @app.get("/")
 def index():
-    return FileResponse("web/static/index.html")
+    return FileResponse("web/static/index.html", headers={
+        "Cache-Control": "no-cache, must-revalidate",
+    })
 
 
 @app.get("/health")
@@ -144,6 +146,18 @@ def inject(name: str, request: Request):
     run_id = current.new_run()
     current.run_journal.log("run_started", {"run": run_id})
     current.sim.inject_scenario(name)
+    current.run_journal.log("incident_injected", {
+        "scenario": name,
+        "alert_count": len(current.sim.active_alerts()),
+    })
+    return snapshot(current)
+
+
+@app.post("/api/resolve")
+def resolve(request: Request):
+    current = state_for_request(request)
+    if not current.sim.active_alerts():
+        raise HTTPException(status_code=409, detail="no incident active")
     current.last_summary = run_tick(
         current.sim, current.policy, current.run_journal)
     current.last_model_used = dm.last_model_used
@@ -213,14 +227,37 @@ def snapshot(current: AppState) -> dict:
     reachable = sum(
         record["communication_status"] == "reachable"
         for record in evidence_devices)
+    queue_rows = current.sim.queue_records()
+    servers_up = sorted({
+        row["server"] for row in queue_rows
+        if all(q["status"] == "running" for q in queue_rows
+               if q["server"] == row["server"])
+    })
+    compliant = sum(d.current_firmware == d.target_firmware
+                    and d.device_id not in current.sim.quarantined
+                    for d in devices)
     return {
         "run_id": current.run_id,
+        "incident_active": bool(alerts),
+        "quarantine": {
+            "jobs": current.sim.quarantined_jobs(),
+            "devices": sorted(current.sim.quarantined),
+        },
         "fleet": {
             "devices": len(devices),
             "servers": sorted({d.server for d in devices}),
+            "servers_up": servers_up,
             "alerts_open": len(alerts),
             "reachable": sum(d.communication_status == "reachable"
                              for d in devices),
+            "firmware_compliant": compliant,
+        },
+        "inventory": current.sim.inventory_records(),
+        "queues": queue_rows,
+        "firmware": {
+            "packages": current.sim.firmware_packages(),
+            "quarantined": sorted(current.sim.quarantined),
+            "frozen": sorted(current.sim.frozen),
         },
         "evidence": {
             "scenario": current.sim.scenario,

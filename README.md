@@ -70,11 +70,37 @@ cp .env.example .env   # add your Gemini API key
 .venv/bin/python -m uvicorn web.app:app --port 8080   # → http://localhost:8080
 ```
 
+## Print architecture (why 22 queues stall from one job)
+The fleet runs a mixed MPS architecture. `srv-east-1` hosts **PrintVault
+Secure Release** (a fictional Equitrac-style pull-print service): print jobs
+are spooled centrally to pull-release queues and only released when a user
+badges at a device. The other three servers use direct IP print queues (IPP /
+RAW 9100). One oversized job blocking the release spooler therefore stalls
+**every pull-release queue behind it** — the realistic mechanism behind the
+queue-hang scenario — while direct queues are unaffected.
+
+## Dashboard tour
+The dashboard is an app shell with seven tabs: **Dashboard** (donut KPIs —
+printers up, print servers, open alerts, firmware compliance — plus incident
+assessment, decision gate, evidence, and the audit journal), **Printers**
+(full 200-device inventory with hostname, IP, MAC, serial, model, status,
+contact, and queue type), **Queues** (pull-release vs direct with live
+stalled state), **Firmware** (signed vendor package repository, upload panel,
+rollout status), **Reports**, **Administration**, and **Settings**. Reports,
+Administration, and Settings are read-only in the POC.
+
 ## Demo scenarios (dashboard buttons)
-- **Queue hang** — 30 jobs stalled across 22 queues on one print server → one
-  suspect job identified with synthetic owner/account evidence → that job is
-  quarantined → the other 29 jobs are released → FleetPilot re-observes zero
-  matching alerts and no collateral clearing.
+Each scenario runs in two phases: the incident is injected first (donuts flip
+red — alerts open, affected server degraded, firmware compliance drops, queues
+stalled), then the agent resolves it (auto-fix for low-risk actions, approval
+gate for firmware), returning the dashboard to green with **persistent
+quarantine evidence** — the suspect job or frozen devices stay listed in the
+Quarantine panel and badged on the Queues tab.
+- **Queue hang** — 30 jobs stalled across 22 pull-release queues on the
+  PrintVault release server → one suspect job identified with synthetic
+  owner/account evidence → that job is quarantined → the other 29 jobs are
+  released → FleetPilot re-observes zero matching alerts and no collateral
+  clearing.
 - **Firmware drift (pushes freeze)** — 30 compliance alerts → firmware push
   gated for human approval → 5-device pilot → watchdog catches frozen
   pushes → 3 update attempts quarantined, 2 complete, and 25 remain untouched.
@@ -97,7 +123,7 @@ the Fortified Enterprise Fleet track.
 | --- | --- |
 | Operational utility (40%) | 30 queue alerts collapse to one grounded incident; one bounded action quarantines the suspect job and releases the 29-job backlog. |
 | Architecture (30%) | Gemini proposes only; deterministic validation, scope grounding, policy, approval, pilot, watchdog, and post-state verification control execution. |
-| Demo readiness (30%) | Public Cloud Run UI, visible Gemini source/revision, two short workflows, reproducible setup, 49 passing tests, 11/11 offline evals. |
+| Demo readiness (30%) | Public Cloud Run UI, visible Gemini source/revision, two short workflows, reproducible setup, 55 passing tests, 11/11 offline evals. |
 
 ## Deploy to Google Cloud Run
 The verified deployment uses Vertex AI and the Cloud Run service account; no
@@ -136,7 +162,7 @@ model backend and credential before running.
 <https://fleetpilot-118750462659.us-central1.run.app>
 (`gemini-3.5-flash` @ Vertex, service-account auth); the active revision is
 shown by the dashboard and `/health`. The current repository passes 11/11
-offline eval scenarios and 49/49 pytest cases at 92.32% coverage. Both locked
+offline eval scenarios and 55/55 pytest cases. Both locked
 workflows previously passed browser QA with zero console errors, and three
 consecutive hosted rehearsal runs
 (`scripts/rehearse_hosted.py`) completed both workflows with

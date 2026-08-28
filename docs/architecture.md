@@ -1,5 +1,30 @@
 # FleetPilot Architecture
 
+## Fleet print topology (what the agent operates on)
+
+```mermaid
+flowchart LR
+    User["Print user"] -->|"prints"| PullSrv["srv-east-1<br/>PrintVault Secure Release<br/>(pull print, Equitrac-style)"]
+    PullSrv -->|"hold until badge tap"| Release["Pull-release queues<br/>SR-E1-PR-xx"]
+    User -->|"badge at device"| Device["200 printers<br/>Xerox / Ricoh / HP"]
+    Release --> Device
+
+    User -->|"prints"| Direct["srv-east-2 / west-1 / west-2<br/>direct IP queues (IPP, RAW 9100)"]
+    Direct --> Device
+
+    Suspect["1 oversized blocking job<br/>on the release spooler"] -.->|"stalls every<br/>release queue"| Release
+    FW["Signed vendor firmware packages<br/>(Firmware tab repository)"] -.->|"gated 5-device pilot<br/>+ watchdog"| Device
+```
+
+Why one job stalls 22 queues: pull-print jobs all spool through the release
+server's shared spooler before badge release, so a single blocking job there
+holds every pull-release queue behind it — while direct-IP queues and the
+printers themselves stay healthy. The queue-hang demo is exactly this
+failure; the firmware demo pushes signed packages from the repository through
+a human-gated pilot with a watchdog.
+
+## Agent and execution architecture
+
 ```mermaid
 flowchart LR
     Operator["Fleet operator"] --> UI["FastAPI dashboard<br/>deployed on Cloud Run"]

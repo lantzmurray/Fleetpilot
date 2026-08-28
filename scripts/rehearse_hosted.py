@@ -28,7 +28,8 @@ def rehearsal(base: str, idx: int) -> bool:
 
     # Scene 1: queue hang -> one RCA -> safe auto-fix -> 0 alerts
     t0 = time.time()
-    r = requests.post(f"{base}/api/scenario/queue_hang", timeout=TIMEOUT).json()
+    requests.post(f"{base}/api/scenario/queue_hang", timeout=TIMEOUT)
+    r = requests.post(f"{base}/api/resolve", timeout=TIMEOUT).json()
     t_q = time.time() - t0
     src = r["last_summary"].get("diagnosis_source")
     ok &= check("queue diagnosis", src == "gemini",
@@ -49,8 +50,9 @@ def rehearsal(base: str, idx: int) -> bool:
 
     # Scene 2: guarded firmware rollout -> approval -> 5-device pilot abort
     t0 = time.time()
-    r = requests.post(f"{base}/api/scenario/firmware_push_freezes",
-                      timeout=TIMEOUT).json()
+    requests.post(f"{base}/api/scenario/firmware_push_freezes",
+                  timeout=TIMEOUT)
+    r = requests.post(f"{base}/api/resolve", timeout=TIMEOUT).json()
     t_f = time.time() - t0
     src = r["last_summary"].get("diagnosis_source")
     ok &= check("firmware diagnosis", src == "gemini",

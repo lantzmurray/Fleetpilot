@@ -176,7 +176,8 @@ def heuristic_diagnose(alerts: list[dict]) -> Diagnosis:
         action["cost_usd"] = round(len(action["devices"]) * 79.99, 2)
     if symptom == "job_stuck" and suspect:
         root_cause = (
-            f"print spooler on {location} blocked by suspect job "
+            f"pull-print release spooler on {location} (PrintVault Secure "
+            f"Release) blocked by suspect job "
             f"{suspect['job_id']}; {len(members)} of {len(alerts)} job alerts "
             f"stalled across {len(queues)} queues"
         )

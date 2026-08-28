@@ -7,6 +7,15 @@ import pytest
 import web.app as web_app
 
 
+def run_scenario(client, name, headers=None):
+    """Two-phase scenario: inject (incident visible) then resolve."""
+    injected = client.post(f"/api/scenario/{name}", headers=headers)
+    assert injected.status_code == 200
+    resolved = client.post("/api/resolve", headers=headers)
+    assert resolved.status_code == 200
+    return injected.json(), resolved.json()
+
+
 def test_health_reports_runtime_readiness(api_client, monkeypatch):
     monkeypatch.setenv("GEMINI_MODEL", "gemini-test-runtime")
     monkeypatch.setenv("K_SERVICE", "fleetpilot-cloud")
@@ -54,6 +63,71 @@ def test_dashboard_contract_surfaces_job_device_and_network_evidence():
     assert "crypto.randomUUID" in index
 
 
+def test_app_shell_contract_tabs_donuts_and_new_pages():
+    index = (Path(__file__).parents[1] / "web/static/index.html").read_text()
+
+    for tab in ("Dashboard", "Printers", "Queues", "Firmware",
+                "Reports", "Administration", "Settings"):
+        assert tab in index
+    for donut in ("donut-printers", "donut-servers", "donut-alerts",
+                  "donut-compliance"):
+        assert donut in index
+    assert "PrintVault Secure Release" in index
+    assert "Hostname" in index
+    assert "pull release" in index
+
+
+def test_inventory_surfaces_200_devices_with_contact_and_status_fields(api_client):
+    response = api_client.get("/api/state")
+
+    body = response.json()
+    inventory = body["inventory"]
+    assert len(inventory) == 200
+    record = inventory[0]
+    for field in ("hostname", "ip_address", "mac_address", "serial_number",
+                  "manufacturer", "model", "printer_status", "last_status_at",
+                  "contact_name", "contact_phone", "server", "queue"):
+        assert record[field]
+    hostnames = {d["hostname"] for d in inventory}
+    assert len(hostnames) == 200
+
+
+def test_queue_registry_shows_pull_release_queues_running_after_resolution(
+        api_client):
+    before = api_client.get("/api/state").json()
+    stalled_before = [q for q in before["queues"] if q["status"] == "stalled"]
+    assert stalled_before == []
+    pull = [q for q in before["queues"] if q["queue_type"] == "pull_release"]
+    assert pull and all(q["server"] == "srv-east-1" for q in pull)
+    assert all(q["status"] == "running" for q in pull)
+
+    incident, after = run_scenario(api_client, "queue_hang")
+
+    # Incident phase: 22 pull-release queues stall red.
+    stalled = [q for q in incident["queues"] if q["status"] == "stalled"]
+    assert len(stalled) == 22
+    assert incident["incident_active"] is True
+    # The agent resolves the incident, so the queue registry must be back
+    # to running with no pending jobs.
+    assert [q for q in after["queues"] if q["status"] == "stalled"] == []
+    assert all(q["pending_jobs"] == 0 for q in after["queues"])
+
+
+def test_firmware_registry_lists_signed_vendor_packages(api_client):
+    body = api_client.get("/api/state").json()
+
+    packages = body["firmware"]["packages"]
+    assert len(packages) == 6
+    vendors = {p["vendor"] for p in packages}
+    assert vendors == {"Xerox", "Ricoh", "HP"}
+    for package in packages:
+        assert package["file_name"]
+        assert len(package["sha256"]) == 16
+        assert package["signed_by"]
+        assert package["status"] == "Approved"
+    assert body["fleet"]["firmware_compliant"] == body["fleet"]["devices"]
+
+
 def test_browser_sessions_cannot_read_overwrite_or_approve_each_other(
         api_client):
     operator_a = {
@@ -63,9 +137,8 @@ def test_browser_sessions_cannot_read_overwrite_or_approve_each_other(
         "X-FleetPilot-Session": "22222222-2222-4222-8222-222222222222"
     }
 
-    first = api_client.post(
-        "/api/scenario/firmware_push_freezes", headers=operator_a
-    ).json()
+    first = run_scenario(
+        api_client, "firmware_push_freezes", headers=operator_a)[1]
     approval_id = first["pending_approvals"][0]["id"]
 
     second_initial = api_client.get("/api/state", headers=operator_b).json()
@@ -105,7 +178,7 @@ def test_health_reports_the_calling_browser_run(api_client):
         "X-FleetPilot-Session": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
     }
 
-    api_client.post("/api/scenario/queue_hang", headers=operator_a)
+    run_scenario(api_client, "queue_hang", headers=operator_a)
 
     health_a = api_client.get("/health", headers=operator_a).json()
     health_b = api_client.get("/health", headers=operator_b).json()
@@ -124,9 +197,8 @@ def test_session_capacity_preserves_active_runs_instead_of_evicting(
     }
     monkeypatch.setattr(web_app, "MAX_BROWSER_SESSIONS", 1)
 
-    first = api_client.post(
-        "/api/scenario/firmware_push_freezes", headers=operator_a
-    ).json()
+    first = run_scenario(
+        api_client, "firmware_push_freezes", headers=operator_a)[1]
     refused = api_client.get("/api/state", headers=operator_b)
     first_after = api_client.get("/api/state", headers=operator_a).json()
 
@@ -137,7 +209,7 @@ def test_session_capacity_preserves_active_runs_instead_of_evicting(
 
 
 def test_new_run_starts_clean_and_preserves_prior_audit_history(api_client):
-    first = api_client.post("/api/scenario/firmware_push_freezes").json()
+    first = run_scenario(api_client, "firmware_push_freezes")[1]
     first_run = first["run_id"]
     assert first["pending_approvals"]
     assert len(first["journal"]) > 1
@@ -163,7 +235,7 @@ def test_new_run_starts_clean_and_preserves_prior_audit_history(api_client):
 
 
 def test_second_scenario_cannot_inherit_first_run_state(api_client):
-    first = api_client.post("/api/scenario/firmware_push_freezes").json()
+    first = run_scenario(api_client, "firmware_push_freezes")[1]
     assert first["pending_approvals"]
 
     second = api_client.post("/api/scenario/queue_hang").json()
@@ -178,11 +250,16 @@ def test_second_scenario_cannot_inherit_first_run_state(api_client):
 
 
 def test_queue_hang_is_a_deterministic_complete_workflow(api_client):
-    response = api_client.post("/api/scenario/queue_hang")
+    incident, body = run_scenario(api_client, "queue_hang")
 
-    assert response.status_code == 200
-    body = response.json()
+    # Incident phase: red dashboard state before resolution.
+    assert incident["fleet"]["alerts_open"] == 30
+    assert incident["incident_active"] is True
+    assert incident["fleet"]["reachable"] == incident["fleet"]["devices"]
+    assert len(incident["quarantine"]["jobs"]) == 0
+
     assert body["fleet"]["alerts_open"] == 0
+    assert body["incident_active"] is False
     assert body["pending_approvals"] == []
     assert body["last_summary"]["diagnosis_source"] == "heuristic"
     assert "30 of 30" in body["last_summary"]["root_cause"]
@@ -213,16 +290,40 @@ def test_queue_hang_is_a_deterministic_complete_workflow(api_client):
         "unexpected_alerts_cleared": 0,
     }
     assert [event["kind"] for event in body["journal"]] == [
-        "run_started", "observe", "diagnose", "gate", "action_result",
-        "verify", "cycle_complete", "approval_queue",
+        "run_started", "incident_injected", "observe", "diagnose", "gate",
+        "action_result", "verify", "cycle_complete", "approval_queue",
     ]
 
 
-def test_frozen_firmware_flow_uses_only_a_pilot_then_aborts(api_client):
-    proposed = api_client.post("/api/scenario/firmware_push_freezes")
+def test_resolve_requires_an_active_incident(api_client):
+    response = api_client.post("/api/resolve")
 
-    assert proposed.status_code == 200
-    before = proposed.json()
+    assert response.status_code == 409
+    assert response.json()["detail"] == "no incident active"
+
+
+def test_resolution_leaves_quarantine_evidence(api_client):
+    _, body = run_scenario(api_client, "queue_hang")
+
+    quarantined = body["quarantine"]["jobs"]
+    assert len(quarantined) == 1
+    job = quarantined[0]
+    assert job["job_id"] == "JOB-78421"
+    assert job["document_name"] == "Vacation_Photo_Book_2400dpi.pdf"
+    assert job["status"] == "quarantined"
+    badge_queues = [q for q in body["queues"] if q["quarantined_jobs"]]
+    assert len(badge_queues) == 1
+    assert badge_queues[0]["queue"] == job["queue"]
+    assert badge_queues[0]["quarantined_jobs"] == 1
+
+
+def test_frozen_firmware_flow_uses_only_a_pilot_then_aborts(api_client):
+    injected, before = run_scenario(api_client, "firmware_push_freezes")
+
+    # Incident phase: firmware compliance drops, alerts open, gate pending.
+    assert injected["fleet"]["alerts_open"] == 30
+    assert injected["fleet"]["firmware_compliant"] == 170
+    assert injected["incident_active"] is True
     assert before["fleet"]["alerts_open"] == 30
     assert len(before["pending_approvals"]) == 1
     approval = before["pending_approvals"][0]
@@ -250,6 +351,7 @@ def test_frozen_firmware_flow_uses_only_a_pilot_then_aborts(api_client):
     assert report["pilot_size"] == 5
     assert report["pilot_completed"] + len(report["hung"]) == 5
     assert report["hung"] == report["quarantined"]
+    assert after["quarantine"]["devices"] == report["hung"]
     assert report["watchdog_checks"] == 3
     assert report["fleet_untouched"] == (
         len(approval["action"]["devices"]) - report["pilot_size"]

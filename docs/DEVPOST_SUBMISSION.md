@@ -31,15 +31,37 @@ firmware, and reachability evidence into a governed response:
 6. Record observation, diagnosis, gate, action, verification, approval, and
    watchdog events in the POC journal.
 
+## Bring Your Own Friction
+
+The friction that built this product: a firmware push that froze mid-rollout
+on real fleet hardware while every dashboard stayed green. FleetPilot is the
+operator console that would have caught it — grounded diagnosis, autonomy
+proportional to risk, and verified outcomes.
+
+## The dashboard tells the story
+
+The dashboard opens all green — 200/200 printers up, 4/4 servers, zero
+alerts, 100% firmware compliance. Each scenario lands **red first** (alerts
+open, the affected server degrades, compliance drops, queues stall), then the
+agent resolves it and the dashboard returns to green **leaving quarantine
+evidence behind**: the suspect job or frozen devices stay listed in the
+Quarantine panel and badged on the affected queue. The fleet runs a mixed MPS
+architecture — pull-print secure release on one server (jobs spool centrally
+and print on badge tap), direct IP queues on the rest — which is exactly why
+one blocking job can stall twenty-two release queues while every printer
+stays online.
+
 ## Two proof workflows
 
 ### Queue hang
 
-Thirty synthetic jobs across twenty-two queues on one print server appear as
-thirty device alerts. FleetPilot identifies one suspect 1.8 GB non-business
-print job with an owner and account code, grounds the server incident scope,
-quarantines the suspect job, releases the other twenty-nine jobs, and
-re-observes zero matching alerts with no collateral alert clearing.
+Thirty synthetic jobs across twenty-two pull-release queues on the secure
+release server appear as thirty alerts. FleetPilot identifies one suspect
+1.8 GB non-business print job with an owner and account code, grounds the
+server incident scope, quarantines the suspect job, releases the other
+twenty-nine jobs, and re-observes zero matching alerts with no collateral
+alert clearing — printers stay 200/200 online throughout, because it is a
+queue-layer incident, not a device one.
 
 ### Guarded firmware rollout
 
