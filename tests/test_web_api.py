@@ -41,6 +41,9 @@ def test_dashboard_contract_surfaces_job_device_and_network_evidence():
     assert "Reachability" in index
     assert "Last poll" in index
     assert "synthetic records" in index
+    assert 'id="outcome-verification"' in index
+    assert "Outcome verification" in index
+    assert "SAFE ABORT CONFIRMED" in index
 
 
 def test_new_run_starts_clean_and_preserves_prior_audit_history(api_client):
@@ -107,9 +110,17 @@ def test_queue_hang_is_a_deterministic_complete_workflow(api_client):
     assert len(executed) == 1
     assert executed[0][0]["kind"] == "clear_stuck_job"
     assert executed[0][1]["alerts_cleared"] == 30
+    assert body["last_summary"]["verification"] == {
+        "status": "resolved",
+        "actions_checked": 1,
+        "alerts_before": 30,
+        "alerts_after": 0,
+        "alerts_cleared": 30,
+        "matching_alerts_remaining": 0,
+    }
     assert [event["kind"] for event in body["journal"]] == [
-        "run_started", "observe", "diagnose", "gate", "cycle_complete",
-        "approval_queue",
+        "run_started", "observe", "diagnose", "gate", "verify",
+        "cycle_complete", "approval_queue",
     ]
 
 
@@ -149,6 +160,16 @@ def test_frozen_firmware_flow_uses_only_a_pilot_then_aborts(api_client):
     assert report["fleet_untouched"] == (
         len(approval["action"]["devices"]) - report["pilot_size"]
     )
+    assert report["verification"] == {
+        "status": "safe_abort_confirmed",
+        "pilot_checked": 5,
+        "completed_compliant": 2,
+        "quarantined_noncompliant": 3,
+        "remainder_untouched": 25,
+        "expansion_started": False,
+        "alerts_before": 30,
+        "alerts_after": 28,
+    }
     assert after["fleet"]["alerts_open"] == (
         before["fleet"]["alerts_open"] - report["pilot_completed"]
     )
@@ -163,6 +184,9 @@ def test_frozen_firmware_flow_uses_only_a_pilot_then_aborts(api_client):
                     if event["kind"] == "rollout_pilot"]
     assert len(pilot_events) == 1
     assert len(pilot_events[0]["payload"]["pilot"]) == 5
+    verify_events = [event for event in after["journal"]
+                     if event["kind"] == "verify"]
+    assert verify_events[-1]["payload"] == report["verification"]
     assert not any(event["payload"].get("stage") == "full"
                    for event in after["journal"])
 

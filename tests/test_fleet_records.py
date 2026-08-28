@@ -70,9 +70,9 @@ def test_network_alert_evidence_matches_device_reachability_and_server():
 def test_queue_remediation_preserves_job_evidence_and_releases_backlog():
     sim = FleetSimulator.seed()
     sim.inject_scenario("queue_hang")
+    journal = Journal(":memory:")
 
-    summary = run_tick(
-        sim, PolicyEngine.defaults(), Journal(":memory:"))
+    summary = run_tick(sim, PolicyEngine.defaults(), journal)
     jobs = sim.print_job_records()
 
     assert summary["executed"][0][0]["kind"] == "clear_stuck_job"
@@ -82,6 +82,20 @@ def test_queue_remediation_preserves_job_evidence_and_releases_backlog():
         "quarantined"
     ]
     assert sum(job["status"] == "released" for job in jobs) == 29
+    assert summary["verification"] == {
+        "status": "resolved",
+        "actions_checked": 1,
+        "alerts_before": 30,
+        "alerts_after": 0,
+        "alerts_cleared": 30,
+        "matching_alerts_remaining": 0,
+    }
+    verify_events = [event for event in journal.replay()
+                     if event["kind"] == "verify"]
+    assert len(verify_events) == 1
+    assert verify_events[0]["payload"]["status"] == "resolved"
+    assert verify_events[0]["payload"]["action_kind"] == "clear_stuck_job"
+    assert verify_events[0]["payload"]["matching_alerts_remaining"] == 0
 
 
 def test_executor_cannot_expand_beyond_the_policy_reviewed_scope():
