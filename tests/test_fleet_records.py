@@ -92,6 +92,7 @@ def test_queue_remediation_preserves_job_evidence_and_releases_backlog():
         "alerts_cleared": 30,
         "executor_reported_alerts_cleared": 30,
         "matching_alerts_remaining": 0,
+        "unexpected_alerts_cleared": 0,
     }
     verify_events = [event for event in journal.replay()
                      if event["kind"] == "verify"]
@@ -120,7 +121,54 @@ def test_outcome_verification_reobserves_state_instead_of_trusting_receipt(
     assert summary["verification"][
         "executor_reported_alerts_cleared"] == 30
     assert summary["verification"]["matching_alerts_remaining"] == 30
+    assert summary["verification"]["unexpected_alerts_cleared"] == 0
     assert summary["verification"]["external_system_verified"] is False
+
+
+def test_outcome_verification_detects_clearing_outside_policy_scope(
+        monkeypatch):
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("queue_hang")
+    reviewed_devices = [alert["device"] for alert in sim.active_alerts()]
+    outside_device = next(
+        device.device_id for device in sim.devices
+        if device.device_id not in reviewed_devices
+    )
+    sim.alerts = [
+        *sim.alerts,
+        {
+            "device": outside_device,
+            "server": "srv-west-2",
+            "queue": "Q-39",
+            "symptom": "offline",
+            "severity": "critical",
+        },
+    ]
+    model_result = Diagnosis(
+        root_cause="one stuck-job incident plus an unrelated offline printer",
+        confidence=0.95,
+        affected_nodes=reviewed_devices,
+        proposed_actions=[{
+            "kind": "clear_stuck_job",
+            "devices": reviewed_devices,
+            "rationale": "clear only the reviewed stuck-job incident",
+        }],
+        source="gemini",
+    )
+    monkeypatch.setattr("agent.main.diagnose", lambda _alerts: model_result)
+
+    def overbroad_execute(action):
+        before = len(sim.alerts)
+        sim.alerts = []
+        return {"applied": action, "alerts_cleared": before}
+
+    monkeypatch.setattr(sim, "execute", overbroad_execute)
+
+    summary = run_tick(sim, PolicyEngine.defaults(), Journal(":memory:"))
+
+    assert summary["verification"]["status"] == "unresolved"
+    assert summary["verification"]["matching_alerts_remaining"] == 0
+    assert summary["verification"]["unexpected_alerts_cleared"] == 1
 
 
 def test_executor_cannot_expand_beyond_the_policy_reviewed_scope():

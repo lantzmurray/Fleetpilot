@@ -123,6 +123,7 @@ def test_queue_hang_is_a_deterministic_complete_workflow(api_client):
         "alerts_cleared": 30,
         "executor_reported_alerts_cleared": 30,
         "matching_alerts_remaining": 0,
+        "unexpected_alerts_cleared": 0,
     }
     assert [event["kind"] for event in body["journal"]] == [
         "run_started", "observe", "diagnose", "gate", "action_result",
