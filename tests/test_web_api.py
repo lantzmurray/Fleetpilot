@@ -17,6 +17,9 @@ def test_health_reports_runtime_readiness(api_client, monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
+    assert body["probe"] == "liveness"
+    assert body["model_live_verified"] is False
+    assert body["model_status"] == "not_yet_exercised"
     assert body["service"] == "fleetpilot-cloud"
     assert body["model"] == "gemini-test-runtime"
     assert body["deployment"] == "Cloud Run"
