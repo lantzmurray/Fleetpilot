@@ -1,12 +1,13 @@
 # FleetPilot Contest Execution Plan
 
-*Authoritative plan as of Thursday, August 27, 2026 · Demo-ready target: Thursday, August 27 · Submission deadline: Monday, August 31, 5:00 PM PT / 8:00 PM ET*
+*Authoritative plan as of Friday, August 28, 2026 · Submission deadline: Monday, August 31, 5:00 PM PT / 8:00 PM ET*
 
 ## Contest position
 
 **Product/domain: Enterprise printer-fleet operations**
 
-**Contest category: select separately at submission; do not make it a product claim**
+**Contest track: Taskmaster.** This is a complete operational workflow, not a
+task-management product. Enterprise printer fleets remain the product domain.
 
 **Also eligible for:** Individual/Hobbyist and Best Architectural Design  
 **One-sentence pitch:** FleetPilot turns a device-fleet alert storm into one topology-aware diagnosis, safely completes low-risk remediation, and stops risky firmware rollouts before they become fleet-wide outages.
@@ -28,7 +29,7 @@ The entry should make three narrow claims:
 
 Official references: [contest overview](https://allthingsagentichackathon.devpost.com/) · [rules](https://allthingsagentichackathon.devpost.com/rules) · [unedited-video clarification](https://allthingsagentichackathon.devpost.com/forum_topics/44809-demo-video-is-speeding-up-the-whole-recording-allowed-under-unedited)
 
-## Actual progress through August 26
+## Actual progress through August 28
 
 ### Verified locally
 
@@ -38,7 +39,10 @@ Official references: [contest overview](https://allthingsagentichackathon.devpos
 - Deterministic policy: allowlist, denylist, action cap, blast-radius gate, purchase cap, and notification cooldown.
 - Staged firmware rollout: five-device pilot, watchdog, abort, quarantine, and no automatic fleet-wide expansion.
 - Gemini timeout guard degrades to the heuristic path instead of hanging indefinitely.
-- Offline harness passes **11/11 scenarios**; pytest passes **39/39** at **87.26% coverage**.
+- Offline harness passes **11/11 scenarios**; pytest passes **45/45** at **91.90% coverage**.
+- Post-action verification re-observes simulator state, detects unresolved
+  targeted alerts and collateral clearing, and explicitly reports that no
+  external system was verified.
 - A fresh virtual environment completes the README eval, CLI, and web quickstart.
 - The full API sequence passes five consecutive local runs with isolated run IDs.
 - The real browser path proves queue remediation plus the guarded 5-device abort.
@@ -74,10 +78,13 @@ Supplies and alert storm remain test/README evidence. Do not tour them in the vi
 
 **Goal:** make both outcomes obvious without lengthy narration.
 
-- Keep the product story enterprise fleet; choose the Devpost category as a separate submission decision.
+- Keep the product story enterprise fleet; submit in Taskmaster because the
+  agent completes the governed workflow end to end.
 - Add a persistent rollout-result card showing pilot size, completed count, hung/quarantined devices, untouched count, outcome, and watchdog checks.
 - Show the approval's device count/blast radius and the reason it was gated.
-- Give each demo run a run/session ID and display only the current run's journal by default. Retain append-only history rather than deleting evidence.
+- Give each demo run a run/session ID and display only the current run's journal
+  by default. Within this single-operator POC process, retain prior journal
+  events until the Cloud Run instance is recycled.
 - Put Queue Hang and Guarded Firmware Rollout first. Move other scenarios under “Additional scenarios.”
 - Add loading/disabled button states so double-clicks cannot duplicate incidents or approvals.
 - Add a health/status strip that reports deployment, diagnosis source, configured model, and fallback state truthfully.
@@ -105,7 +112,8 @@ No new product features after testing begins unless they fix a failed gate.
 
 #### Gate 2: deterministic unit/eval suite
 
-- Retain the current 10-scenario harness with all model credentials disabled.
+- Retain the current 11-scenario harness with every live model backend and
+  credential disabled.
 - Add pytest coverage for correlation, empty alerts, policy controls, clean/frozen pilots, quarantine, and no automatic expansion.
 - Mock Gemini paths: valid response, malformed JSON, invalid action/device, timeout, quota/error, and labeled deterministic fallback.
 - Measure coverage and reach at least 80% for the submitted code.
@@ -139,7 +147,8 @@ Automate the actual FastAPI sequence:
 - Build and run the exact Docker image locally; test UI and both workflows.
 - Configure a Git remote and push the exact demo commit.
 - Deploy one Cloud Run service with the Gemini key supplied through environment/secret configuration.
-- Verify the public `.run.app` URL, current revision/commit, live Gemini path, health/status strip, journal isolation, and logs.
+- Verify the public `.run.app` URL, current revision/commit, live Gemini path,
+  health/status strip, current-run journal view, and logs.
 - Record the service URL, region, revision, and commit SHA.
 
 **Pass:** three consecutive hosted rehearsals finish inside the demo budget and visibly show Google Cloud, the eligible Gemini model, queue remediation, and firmware-abort evidence.
@@ -238,4 +247,7 @@ Do not narrate the repository layout, every policy rule, every scenario, or ever
 - **DEMO-READY:** every Wednesday gate plus three Thursday Cloud Run rehearsals pass.
 - **SUBMISSION-READY:** video, README, diagram, hosted revision, repository access, disclosures, and Devpost fields are verified.
 
-**Current state on August 26: TEST-READY locally; not yet DEMO-READY or SUBMISSION-READY.**
+**Current state on August 28: runtime and materials are demo-ready locally;
+the new revision still requires hosted verification. The entry is not
+submission-ready until the continuous video is uploaded and Devpost is
+submitted.**

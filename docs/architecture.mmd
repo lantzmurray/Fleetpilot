@@ -1,6 +1,3 @@
-# FleetPilot Architecture
-
-```mermaid
 flowchart LR
     Operator["Fleet operator"] --> UI["FastAPI dashboard<br/>deployed on Cloud Run"]
     UI --> Evidence["Synthetic incident evidence<br/>jobs, printers, queues, servers"]
@@ -14,7 +11,6 @@ flowchart LR
 
     Gemini --> Validator
     Correlator -. "labeled offline/timeout fallback" .-> Validator
-
     Policy -->|"bounded low risk"| Simulator["Scoped simulator operation"]
     Policy -->|"high impact"| Approval["Human approval inbox"]
     Approval --> Pilot["Five-printer pilot"]
@@ -30,23 +26,3 @@ flowchart LR
     Approval --> Journal
     Watchdog --> Journal
     Verify --> Journal
-```
-
-## Trust boundary
-
-Gemini may diagnose and propose an action, but it cannot call fleet operations
-directly. Proposals must pass schema/device validation and deterministic scope
-grounding before policy decides whether a scoped simulator operation may run,
-a human must approve, or the action is blocked. The verifier re-reads simulator
-state; it never upgrades that evidence into a physical-device claim. All fleet
-data and actions in the contest build are synthetic.
-
-## Shipped POC limits
-
-- The hosted dashboard is unauthenticated, single-operator, and backed by
-  shared in-process state.
-- The SQLite journal is useful for the demo but is not durable on the Cloud Run
-  filesystem and is not a production audit store.
-- Real vendor APIs, SNMP/HTTPS polling, authenticated operator sessions, a
-  durable database, and external outcome confirmation are production adapter
-  boundaries—not shipped features.
