@@ -84,10 +84,13 @@ def test_queue_remediation_preserves_job_evidence_and_releases_backlog():
     assert sum(job["status"] == "released" for job in jobs) == 29
     assert summary["verification"] == {
         "status": "resolved",
+        "basis": "synthetic_simulator_post_state",
+        "external_system_verified": False,
         "actions_checked": 1,
         "alerts_before": 30,
         "alerts_after": 0,
         "alerts_cleared": 30,
+        "executor_reported_alerts_cleared": 30,
         "matching_alerts_remaining": 0,
     }
     verify_events = [event for event in journal.replay()
@@ -96,6 +99,28 @@ def test_queue_remediation_preserves_job_evidence_and_releases_backlog():
     assert verify_events[0]["payload"]["status"] == "resolved"
     assert verify_events[0]["payload"]["action_kind"] == "clear_stuck_job"
     assert verify_events[0]["payload"]["matching_alerts_remaining"] == 0
+
+
+def test_outcome_verification_reobserves_state_instead_of_trusting_receipt(
+        monkeypatch):
+    sim = FleetSimulator.seed()
+    sim.inject_scenario("queue_hang")
+
+    monkeypatch.setattr(sim, "execute", lambda _action: {
+        "alerts_cleared": 30,
+        "note": "dishonest execution receipt",
+    })
+
+    summary = run_tick(sim, PolicyEngine.defaults(), Journal(":memory:"))
+
+    assert summary["verification"]["status"] == "unresolved"
+    assert summary["verification"]["alerts_before"] == 30
+    assert summary["verification"]["alerts_after"] == 30
+    assert summary["verification"]["alerts_cleared"] == 0
+    assert summary["verification"][
+        "executor_reported_alerts_cleared"] == 30
+    assert summary["verification"]["matching_alerts_remaining"] == 30
+    assert summary["verification"]["external_system_verified"] is False
 
 
 def test_executor_cannot_expand_beyond_the_policy_reviewed_scope():

@@ -43,7 +43,10 @@ def test_dashboard_contract_surfaces_job_device_and_network_evidence():
     assert "synthetic records" in index
     assert 'id="outcome-verification"' in index
     assert "Outcome verification" in index
-    assert "SAFE ABORT CONFIRMED" in index
+    assert "SIMULATOR OUTCOME VERIFIED" in index
+    assert "SAFE ABORT CONFIRMED · SIMULATOR" in index
+    assert "No external fleet polling" in index
+    assert "external_system_verified" in index
 
 
 def test_new_run_starts_clean_and_preserves_prior_audit_history(api_client):
@@ -112,15 +115,18 @@ def test_queue_hang_is_a_deterministic_complete_workflow(api_client):
     assert executed[0][1]["alerts_cleared"] == 30
     assert body["last_summary"]["verification"] == {
         "status": "resolved",
+        "basis": "synthetic_simulator_post_state",
+        "external_system_verified": False,
         "actions_checked": 1,
         "alerts_before": 30,
         "alerts_after": 0,
         "alerts_cleared": 30,
+        "executor_reported_alerts_cleared": 30,
         "matching_alerts_remaining": 0,
     }
     assert [event["kind"] for event in body["journal"]] == [
-        "run_started", "observe", "diagnose", "gate", "verify",
-        "cycle_complete", "approval_queue",
+        "run_started", "observe", "diagnose", "gate", "action_result",
+        "verify", "cycle_complete", "approval_queue",
     ]
 
 
@@ -162,6 +168,8 @@ def test_frozen_firmware_flow_uses_only_a_pilot_then_aborts(api_client):
     )
     assert report["verification"] == {
         "status": "safe_abort_confirmed",
+        "basis": "synthetic_simulator_post_state",
+        "external_system_verified": False,
         "pilot_checked": 5,
         "completed_compliant": 2,
         "quarantined_noncompliant": 3,
