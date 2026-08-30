@@ -64,6 +64,9 @@ python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip in
 cp .env.example .env   # add your Gemini API key
 # Eval suite (offline, no API key needed) — 11/11:
 .venv/bin/python -m harness.run_evals
+# Test suite with coverage (offline):
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pytest --cov
 # CLI demo (single agent cycle):
 .venv/bin/python -m agent.main --demo
 # Web dashboard:
@@ -123,7 +126,7 @@ the Fortified Enterprise Fleet track.
 | --- | --- |
 | Operational utility (40%) | 30 queue alerts collapse to one grounded incident; one bounded action quarantines the suspect job and releases the 29-job backlog. |
 | Architecture (30%) | Gemini proposes only; deterministic validation, scope grounding, policy, approval, pilot, watchdog, and post-state verification control execution. |
-| Demo readiness (30%) | Public Cloud Run UI, visible Gemini source/revision, two short workflows, reproducible setup, 55 passing tests, 11/11 offline evals. |
+| Demo readiness (30%) | Public Cloud Run UI, visible Gemini source/revision, two short workflows, reproducible setup, 57 passing tests, 11/11 offline evals. |
 
 ## Deploy to Google Cloud Run
 The verified deployment uses Vertex AI and the Cloud Run service account; no
@@ -162,16 +165,9 @@ model backend and credential before running.
 <https://fleetpilot-118750462659.us-central1.run.app>
 (`gemini-3.5-flash` @ Vertex, service-account auth); the active revision is
 shown by the dashboard and `/health`. The current repository passes 11/11
-offline eval scenarios and 55/55 pytest cases. Both locked
-workflows previously passed browser QA with zero console errors, and three
-consecutive hosted rehearsal runs
-(`scripts/rehearse_hosted.py`) completed both workflows with
-`source: gemini`, no fallback, and the expected end states. Gemini passed the
-strict live gate with three queue and three 30-device firmware diagnoses at
-3.5–6.3 seconds each, without fallback. Submission is not complete until the
-new revision is hosted, the continuous demo is recorded, and Devpost is
-submitted. See [`CONTEST_PLAN.md`](CONTEST_PLAN.md),
-[`docs/TASKS.md`](docs/TASKS.md), and
+offline eval scenarios and 57/57 pytest cases. Both demo workflows passed
+browser QA with zero console errors and repeated hosted runs with
+`source: gemini` (no fallback) and the expected end states. See
 [`docs/DEVPOST_SUBMISSION.md`](docs/DEVPOST_SUBMISSION.md).
 
 ## Disclosure

@@ -8,3 +8,4 @@ node_modules/
 .pytest_cache/
 .playwright-cli/
 output/
+.DS_Store
